@@ -6,7 +6,25 @@ import org.apache.spark.sql.DataFrame
 
 object Lab1 {
   //def myFunc: (Column => Double) = { s => s.toDouble }
-  
+  val mapToArea = (place:String) => {
+    if (place.equals("City")||
+      place.equals("suburb")||
+      place.equals("borough")||
+      place.equals("plot")||
+      place.equals("city_block")||
+      place.equals("neighbourhood")||
+      place.equals("quarter"))
+      "city"
+    else if (place.equals("town"))
+      "town"
+    else if (place.equals("village"))
+      "village"
+    else 
+      "halmet"
+  }
+
+  val toArea = udf(mapToArea)
+
   def main(args: Array[String]) {
     // Create a SparkSession
     val spark = SparkSession
@@ -26,7 +44,7 @@ object Lab1 {
     //println(h3.h3ToGeo(str));
     val df1=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc"));
    // val df2=readALOS(spark.read.load("parquet/*"),args(0).toInt);
-     val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E006_DSM.parquet"),args(0).toInt);
+     val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E006_DSM.parquet"));
     combineDF(df1.select(col("name"),col("place"),col("population"),col("H3")),df2.select(col("H3"),col("elevation")),args(0).toInt);
     // Stop the underlying SparkContext
     spark.stop
@@ -40,18 +58,21 @@ object Lab1 {
       .groupBy("id","type","lat","lon")
       .pivot("key", Seq("name", "place", "population"))
       .agg(first("value"))
-    val groupdf2=groupdf.filter(col("type") === "node" && col("population").isNotNull);
+    groupdf.printSchema()
+    //
+    val groupdf2=groupdf.filter(col("type") === "node" && col("place").isNotNull && col("population").isNotNull&& (col("place") ==="city" || col("place") ==="town" || col("place") ==="village" || col("place") ==="halmet" ))
+    //groupdf2.write.save("alldata.parquet")
     println("hehe3");
     val geoUDF = udf((lat: Double, lon:Double) => h3Helper.toH3func(lat,lon,10))
     println("hehe4");
     val h3mapdf=groupdf2.withColumn("H3",geoUDF(col("lat"),col("lon")));
+    //h3mapdf.show(10,false)
     return h3mapdf
-    // h3mapdf.show(10,false)
 
 
   }
 
-  def readALOS(alosDF:DataFrame,riseMeter:Int):DataFrame = {
+  def readALOS(alosDF:DataFrame):DataFrame = {
     val geoUDF = udf((lat: Double, lon:Double) => h3Helper.toH3func(lat,lon,10))
     val h3df=alosDF.withColumn("H3",geoUDF(col("lat"),col("lon")));
     return h3df
@@ -62,12 +83,21 @@ object Lab1 {
 
   def combineDF(df1:DataFrame,df2:DataFrame,riseMeter:Int){
     val output = df1.join(df2,df1("H3")===df2("H3"),"inner")
-      .drop("H3")
-      .groupBy("name","place","population")
-      .avg("elevation")
-      .filter(col("avg(elevation)")<=riseMeter);
-    
-    output.show(10,false);
+      .groupBy("name","population")
+      .min("elevation")
+      .filter(col("min(elevation)")<=riseMeter)
+      .drop("min(elevation)")
+      .withColumnRenamed("population","num_evacuees")
+      .withColumnRenamed("name","place")
+      .withColumn("num_evacuees",col("num_evacuees").cast("int"))
+    //output.write.parquet("alldata.parquet")
+     output.printSchema()
+     println("%%%%%%%%%%%")
+     val sum = output.groupBy().sum("num_evacuees").first.get(0)
+     println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+     println("========================================");
+     println("total number of evacuees is " + sum);
+     //output.show(10,false);
 
   }
 
