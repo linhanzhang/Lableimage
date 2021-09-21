@@ -15,11 +15,12 @@ object Lab1 {
         .config("spark.master", "local")
         .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-  //  val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));  //partial osm dataset - corresponds to N052E005
-    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-    val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
-    // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //partial alos dataset
-     val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("population"),col("H3"),col("place"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
+    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));  
+//partial osm dataset - corresponds to N052E004
+  //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+  //val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
+    val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("population"),col("H3"),col("place"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
     // Stop the underlying SparkContext
     findClosestDest(floodDF,safeDF,harbourDF)
     spark.stop
@@ -171,6 +172,25 @@ object Lab1 {
     
       closestCH.show(100,false)
      
+     // seperate into two dataframes
+     // near_harbour: places that are closer to a harbour than a safe city
+     // near_city: places that are closer to a safe city
+     
+     /*
+     val near_harbour = closestCH
+     .filter(col("harbour_distance") <= col("city_distance"))
+     .withColumnRenamed("harbour_distance","distance")
+     .drop("city_distance")
+     
+     near_harbour.show(50,false)
+     */
+     
+     val near_city = closestCH
+     .filter(col("harbour_distance") > col("city_distance"))
+     .withColumnRenamed("city_distance","distance")
+     .drop("harbour_distance")
+     
+     near_city.show(50,false)
 
      
   
