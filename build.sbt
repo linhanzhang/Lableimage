@@ -12,7 +12,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
   // https://mvnrepository.com/artifact/com.uber/h3
-  "com.uber" % "h3" % "3.7.0" from "file:///home/hanzhang/h3-3.7.0.jar"
+  "com.uber" % "h3" % "3.7.0"
 )
 
 // https://mvnrepository.com/artifact/com.uber/h3
