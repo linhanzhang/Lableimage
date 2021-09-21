@@ -15,11 +15,11 @@ object Lab1 {
         .config("spark.master", "local")
         .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-  //  val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));
-    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc"));
-  //  val df2=readALOS(spark.read.load("parquet/*"));
-     val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet"));
-     val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("place"),col("population"),col("H3"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
+  //  val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));  //partial osm dataset - corresponds to N052E005
+    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+    val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+    // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //partial alos dataset
+     val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("population"),col("H3"),col("place"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
     // Stop the underlying SparkContext
     findClosestDest(floodDF,safeDF,harbourDF)
     spark.stop
@@ -73,15 +73,17 @@ object Lab1 {
   def combineDF(df1:DataFrame,df2:DataFrame,riseMeter:Int):(DataFrame,DataFrame)={
   
   //combinedDF - name,place,population,H3,H3Rough,min(elevation)
-    val combinedDF = df1.join(df2,Seq("H3"),"inner")
-      .groupBy("name","place","population","H3","H3Rough")
-      .min("elevation") //
-   
+    val combinedDF_pre = df1.join(df2,Seq("H3"),"inner")
+    val combine2=combinedDF_pre.groupBy("name").min("elevation").withColumnRenamed("min(elevation)","elevation")
+      
+    val combinedDF=combinedDF_pre.join(combine2,Seq("name","elevation")).dropDuplicates("name")
+    print("*******************************************************************************************************")
+  //  print("the original rows: "+combinedDF.count()+"after dropDuplicate: "+combinedDF.dropDuplicates("name").count()+"after drop name elevation"+combinedDF.dropDuplicates("name","elevation").count())
    //combinedDF.show(100,false)   
   //floodDF: place,num_evacuees, H3, H3Rough
       val floodDF=combinedDF
-      	.filter(col("min(elevation)")<=riseMeter)
-      	.drop("min(elevation)","place")
+      	.filter(col("elevation")<=riseMeter)
+      	.drop("elevation","place") //no need to know the type of flooded place any more
       	.withColumnRenamed("population","num_evacuees")
       	.withColumnRenamed("name","place")
       	.withColumnRenamed("H3","floodH3")
@@ -95,9 +97,9 @@ object Lab1 {
    // row satisfied:
    // - safe_place == city | harbour
       val safeDF=combinedDF
-      	.filter(col("min(elevation)")>riseMeter)
-      	.drop("min(elevation)")
-      	.filter(col("place") === "city")
+      	.filter(col("elevation")>riseMeter)
+      	.drop("elevation")
+      	.filter(col("place") === "city")  //the destination must be a city
       	.drop("place")
       	.withColumnRenamed("population","safe_population")
       	.withColumnRenamed("name","destination")
@@ -143,7 +145,7 @@ object Lab1 {
 
 
      val closestDest=floodToSafe //find the closest city for each flooded place, in "closestDest" each place is distinct
-       .join(floodToSafe.groupBy("place").min("city_distance").withColumnRenamed("min(city_distance)","city_distance").drop("place"),Seq("city_distance"))
+       .join(floodToSafe.groupBy("place").min("city_distance").withColumnRenamed("min(city_distance)","city_distance"),Seq("city_distance","place")) //join fangfa
        
      
    //  closestDest.show(100,false)
@@ -160,9 +162,10 @@ object Lab1 {
      .drop("H3Rough","floodH3","harbourH3")
 
      
-  //   floodToSafeCH.show(100,false)
+   //  floodToSafeCH.show(100,false) ok
      
-     val flood2=floodToSafeCH.groupBy("place").min("harbour_distance").withColumnRenamed("min(harbour_distance)","harbour_distance")
+     val flood2=floodToSafeCH.groupBy("place").min("harbour_distance").withColumnRenamed("min(harbour_distance)","harbour_distance") //place is distinct
+    // flood2.show(100,false) //no duplicate
      val closestCH=floodToSafeCH
      .join(flood2,Seq("harbour_distance","place")) //for each flooded place, find the distance to the nearest harbour
     
