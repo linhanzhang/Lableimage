@@ -99,7 +99,7 @@
                )
              ) // set the schema of the output data
      val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
-     output_12.write.orc("output_12.orc")
+     output_12.write.orc("relocate_output_12.orc")
      
      val testread = spark.read.format("orc").load("output_12.orc") 
      */
@@ -119,6 +119,20 @@
 	+-----------+-----------------+--------------+
      */
      
-     val receive_output = receive_popu
+     // ******* transform the output data into the required format **********
+     val receive_output = receive_popu.
+     withColumn("new_population",col("old_population") + col("evacuees_received")).
+     drop("evacuees_received")
+  
+     receive_output.show(50,false)
+        /*
+	+-----------+--------------+--------------+
+	|destination|old_population|new_population|
+	+-----------+--------------+--------------+
+	|Waterworld |0.0           |50.0          |
+	|C137       |1000.0        |1450.0        |
+	+-----------+--------------+--------------+
 
+     */
+     receive_output.write.orc("receive_output_13.orc")
           
