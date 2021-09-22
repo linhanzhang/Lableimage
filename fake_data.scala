@@ -28,6 +28,7 @@
      val change_dest = near_harbour.withColumn("destination",lit("Waterworld"))
      val change_popu = change_dest.withColumn("num_evacuees",col("num_evacuees")*0.25)
      val rest_popu = near_harbour.withColumn("num_evacuees",col("num_evacuees")*0.75)
+     val evacuees_part1 = rest_popu.unionAll(change_popu).show(false)
      
      // *********** count the evacuees to each city************
           
