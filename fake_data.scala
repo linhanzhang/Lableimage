@@ -14,21 +14,21 @@
     val near_harbour = closestCH
      .filter(col("harbour_distance") <= col("city_distance"))
      .drop("city_distance","harbour_distance","safe_population")
-     near_harbour.show(50,false) // close to harbour
+     near_harbour.show(5,false) // close to harbour
 
      
      
      val near_city = closestCH
      .filter(col("harbour_distance") > col("city_distance"))
      .drop("harbour_distance","city_distance","safe_population")
-     near_city.show(50,false) // close to city
+     near_city.show(5,false) // close to city
      
 
      // ********* change the destination to "Waterworld" and count the number of evacuees**********
      val change_dest = near_harbour.withColumn("destination",lit("Waterworld"))
      val change_popu = change_dest.withColumn("num_evacuees",col("num_evacuees")*0.25)
      val rest_popu = near_harbour.withColumn("num_evacuees",col("num_evacuees")*0.75)
-     val evacuees_part1 = rest_popu.unionAll(change_popu).show(false)
+     val evacuees_part1 = rest_popu.union(change_popu).sort("place").show(50,false)
      
      // *********** count the evacuees to each city************
           
