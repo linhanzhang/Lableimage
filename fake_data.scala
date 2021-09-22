@@ -37,10 +37,13 @@
      
      near_harbour_new.show(50,false) // evacuees to harbour and city
      
+     val relocate_output = near_harbour_new.union(near_city).
+     drop("safe_population").
+     sort("place")// Combine <near_harbour_new> and <near_city>
      
-     // *********** count the evacuees to each city************
+     relocate_output.show(50,false)
      
-     // Combine <near_harbour_new> and <near_city>
+     relocate_output.write.orc("relocate.orc") // output as .orc file
      
      
           
