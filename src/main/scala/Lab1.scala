@@ -15,13 +15,13 @@ object Lab1 {
         .config("spark.master", "local")
         .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset  
-    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
-    //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));  
-//partial osm dataset - corresponds to N052E004
-     //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-     //val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+    //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset - corresponds to N052E005  
+    //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
+    //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
+     val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+     val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+    
     val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("population"),col("H3"),col("place"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
     // Stop the underlying SparkContext
     findClosestDest(floodDF,safeDF,harbourDF)
@@ -183,7 +183,7 @@ object Lab1 {
      filter(col("harbour_distance") <= col("city_distance")).
      drop("city_distance","harbour_distance")
      
-     
+     println("cities closer to a harbour")
      near_harbour.show(5,false) // close to harbour
      /*
      	+-----+------------+-----------+---------------+
@@ -201,6 +201,7 @@ object Lab1 {
      filter(col("harbour_distance") > col("city_distance")).
      drop("harbour_distance","city_distance")
      
+     println("cities closer to a safe city")
      near_city.show(5,false) // close to city
      /*
      	+-----+------------+-----------+---------------+
@@ -222,7 +223,8 @@ object Lab1 {
      val rest_popu = near_harbour.withColumn("num_evacuees",col("num_evacuees")*0.75)  // evacuees to the nearest city
      val near_harbour_new = rest_popu.union(change_popu).sort("place")	// Combined DF
      
-     near_harbour_new.show(50,false) // evacuees to harbour and city
+     println("evacuees to harbour and city")
+     //near_harbour_new.show(50,false) // evacuees to harbour and city
      /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -237,6 +239,7 @@ object Lab1 {
      val relocate_output = near_harbour_new.union(near_city).
      sort("place")// Combine <near_harbour_new> and <near_city>
      
+     println("output => evacuees by place")
      relocate_output.show(50,false)
      /*
      	+-----+------------+-----------+---------------+
@@ -252,8 +255,10 @@ object Lab1 {
 	+-----+------------+-----------+---------------+
 
      */
-     
-     //relocate_output.drop("safe_population").write.orc("relocate.orc") // output as .orc file
+     println("***************************************")
+     println("*********** Saving data ***************")
+     relocate_output.drop("safe_population").write.orc("relocate.orc") // output as .orc file
+     println("********** Finished save **************")
      /* change the schema? 
      val schema = StructType(
                Array(
@@ -288,6 +293,7 @@ object Lab1 {
      withColumn("new_population",col("old_population") + col("evacuees_received")).
      drop("evacuees_received")
   
+     println("output => population change of the destination ")
      receive_output.show(50,false)
         /*
 	+-----------+--------------+--------------+
@@ -298,7 +304,10 @@ object Lab1 {
 	+-----------+--------------+--------------+
 
      */
+     println("***************************************")
+     println("*********** Saving data ***************")
      receive_output.write.orc("receive_output_13.orc")
+     println("********** Finished save **************")
   }
 
 
