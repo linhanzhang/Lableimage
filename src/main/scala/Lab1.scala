@@ -15,11 +15,13 @@ object Lab1 {
         .config("spark.master", "local")
         .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));  
+    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset  
+    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
+    //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc"));  
 //partial osm dataset - corresponds to N052E004
-  //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-  //val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
-    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
+     //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+     //val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+    //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
     val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("population"),col("H3"),col("place"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
     // Stop the underlying SparkContext
     findClosestDest(floodDF,safeDF,harbourDF)
@@ -171,29 +173,132 @@ object Lab1 {
      .join(flood2,Seq("harbour_distance","place")) //for each flooded place, find the distance to the nearest harbour
     
       closestCH.show(100,false)
-     
+      closestCH.printSchema()
      // seperate into two dataframes
      // near_harbour: places that are closer to a harbour than a safe city
      // near_city: places that are closer to a safe city
      
+    //********** divide into 2 DFs ***********
+    val near_harbour = closestCH.
+     filter(col("harbour_distance") <= col("city_distance")).
+     drop("city_distance","harbour_distance")
+     
+     
+     near_harbour.show(5,false) // close to harbour
      /*
-     val near_harbour = closestCH
-     .filter(col("harbour_distance") <= col("city_distance"))
-     .withColumnRenamed("harbour_distance","distance")
-     .drop("city_distance")
-     
-     near_harbour.show(50,false)
+     	+-----+------------+-----------+---------------+
+	|place|num_evacuees|destination|safe_population|
+	+-----+------------+-----------+---------------+
+	|B    |100         |C137       |1000           |
+	|C    |100         |C137       |1000           |
+	+-----+------------+-----------+---------------+
+
      */
-     
-     val near_city = closestCH
-     .filter(col("harbour_distance") > col("city_distance"))
-     .withColumnRenamed("city_distance","distance")
-     .drop("harbour_distance")
-     
-     near_city.show(50,false)
 
      
+     
+     val near_city = closestCH.
+     filter(col("harbour_distance") > col("city_distance")).
+     drop("harbour_distance","city_distance")
+     
+     near_city.show(5,false) // close to city
+     /*
+     	+-----+------------+-----------+---------------+
+	|place|num_evacuees|destination|safe_population|
+	+-----+------------+-----------+---------------+
+	|A    |100         |C137       |1000           |
+	|D    |100         |C137       |1000           |
+	|E    |100         |C137       |1000           |
+	+-----+------------+-----------+---------------+
+
+     */
+     
+
+     // ********* operation on <near_harbour> DF **********
+     val change_dest = near_harbour.withColumn("destination",lit("Waterworld")) // change the destination
+     val change_popu = change_dest.
+     withColumn("num_evacuees",col("num_evacuees")*0.25). // evacuees to the WaterWorld
+     withColumn("safe_population", col("safe_population") * 0) // set the population of WaterWorld to 0
+     val rest_popu = near_harbour.withColumn("num_evacuees",col("num_evacuees")*0.75)  // evacuees to the nearest city
+     val near_harbour_new = rest_popu.union(change_popu).sort("place")	// Combined DF
+     
+     near_harbour_new.show(50,false) // evacuees to harbour and city
+     /*
+     	+-----+------------+-----------+---------------+
+	|place|num_evacuees|destination|safe_population|
+	+-----+------------+-----------+---------------+
+	|B    |75.0        |C137       |1000           |
+	|B    |25.0        |Waterworld |0              |
+	|C    |75.0        |C137       |1000           |
+	|C    |25.0        |Waterworld |0              |
+	+-----+------------+-----------+---------------+
+     */
+     
+     val relocate_output = near_harbour_new.union(near_city).
+     sort("place")// Combine <near_harbour_new> and <near_city>
+     
+     relocate_output.show(50,false)
+     /*
+     	+-----+------------+-----------+---------------+
+	|place|num_evacuees|destination|safe_population|
+	+-----+------------+-----------+---------------+
+	|A    |100.0       |C137       |1000           |
+	|B    |25.0        |Waterworld |0              |
+	|B    |75.0        |C137       |1000           |
+	|C    |75.0        |C137       |1000           |
+	|C    |25.0        |Waterworld |0              |
+	|D    |100.0       |C137       |1000           |
+	|E    |100.0       |C137       |1000           |
+	+-----+------------+-----------+---------------+
+
+     */
+     
+     //relocate_output.drop("safe_population").write.orc("relocate.orc") // output as .orc file
+     /* change the schema? 
+     val schema = StructType(
+               Array(
+                 StructField("place", StringType),
+                 StructField("num_evacuees", LongType)
+                 StructField("destination", StringType)
+               )
+             ) // set the schema of the output data
+     val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
+     output_12.write.orc("relocate_output_12.orc")
+     
+     val testread = spark.read.format("orc").load("output_12.orc") 
+     */
+     
+     // ********* calculate the total number of evacuees to each destination ********
+     val receive_popu = relocate_output.groupBy("destination").
+     agg(
+     	sum("num_evacuees").as("evacuees_received"),
+     	avg("safe_population").as("old_population")
+     	)
+     /*
+     	+-----------+-----------------+--------------+                                  
+	|destination|evacuees_received|old_population|
+	+-----------+-----------------+--------------+
+	|Waterworld |50.0             |0.0           |
+	|C137       |450.0            |1000.0        |
+	+-----------+-----------------+--------------+
+     */
+     
+     // ******* transform the output data into the required format **********
+     val receive_output = receive_popu.
+     withColumn("new_population",col("old_population") + col("evacuees_received")).
+     drop("evacuees_received")
   
+     receive_output.show(50,false)
+        /*
+	+-----------+--------------+--------------+
+	|destination|old_population|new_population|
+	+-----------+--------------+--------------+
+	|Waterworld |0.0           |50.0          |
+	|C137       |1000.0        |1450.0        |
+	+-----------+--------------+--------------+
+
+     */
+     receive_output.write.orc("receive_output_13.orc")
   }
 
 
