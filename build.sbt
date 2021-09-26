@@ -10,5 +10,11 @@ val sparkVersion = "3.1.2"
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion,
-  "org.apache.spark" %% "spark-sql" % sparkVersion
+  "org.apache.spark" %% "spark-sql" % sparkVersion,
+  // https://mvnrepository.com/artifact/com.uber/h3
+  "com.uber" % "h3" % "3.7.0"
 )
+
+// https://mvnrepository.com/artifact/com.uber/h3
+//libraryDependencies += "com.uber" % "h3" % "3.7.0"
+
