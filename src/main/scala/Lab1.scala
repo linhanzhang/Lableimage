@@ -9,6 +9,7 @@ object Lab1 {
 
   def main(args: Array[String]) {
     // Create a SparkSession
+
     val spark = SparkSession
         .builder()
         .appName("Lab 1")
@@ -19,8 +20,11 @@ object Lab1 {
     //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
     //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
+    
      val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
      val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+    
+   
     
     val (floodDF, safeDF)=combineDF(df1.select(col("name"),col("population"),col("H3"),col("place"),col("H3Rough")),df2.select(col("H3"),col("elevation")),args(0).toInt);
     // Stop the underlying SparkContext
@@ -36,27 +40,95 @@ object Lab1 {
       .groupBy("id","type","lat","lon")
       .pivot("key", Seq("name", "place", "population","harbour"))
       .agg(first("value"))
+    //
     //groupdf.printSchema()
+       /*
+	  root
+	  |-- id: long (nullable = true)
+	  |-- type: string (nullable = true)
+	  |-- lat: decimal(9,7) (nullable = true)
+	  |-- lon: decimal(10,7) (nullable = true)
+	  |-- name: string (nullable = true)
+	  |-- place: string (nullable = true)
+	  |-- population: string (nullable = true)
+	  |-- harbour: string (nullable = true)
+
+    */
+    //println("showing data")
+    //groupdf.show(50,false)
+    /*
++-------+--------+----+----+--------------+-----+----------+-------+
+|id     |type    |lat |lon |name          |place|population|harbour|
++-------+--------+----+----+--------------+-----+----------+-------+
+|144640 |relation|null|null|Hooglanderveen|null |null      |null   |
+|333291 |relation|null|null|Bus 73: Maarss|null |null      |null   |
+|358048 |relation|null|null|Bus 102: Utrec|null |null      |null   |
+
+    */
+ 
     //
     val groupdf2=groupdf
      .filter(col("type") === "node")
      .filter((col("place").isNotNull && col("population").isNotNull && 
     (col("place") ==="city" || col("place") ==="town" ||col("place")==="village" || col("place") ==="halmet" )) || col("harbour") === "yes" )
-    
-    
+    //
+    // println("showing data")
+    // groupdf2.show(10,false)
+    //
+    /*
++----------+----+----------+---------+-----------+-------+----------+-------+ 
+|			      groupdf2 data 	   			       |
++----------+----+----------+---------+-----------+-------+----------+-------+
+|id        |type|lat       |lon      |name       |place  |population|harbour|
++----------+----+----------+---------+-----------+-------+----------+-------+
+|44843991  |node|52.0102642|5.4332757|Leersum    |village|7511      |null   |
+|44710922  |node|51.9810496|5.1220284|Hagestein  |village|1455      |null   |
+|994008023 |node|52.0367152|5.0836117|Nieuwegein |town   |61869     |null   |
+|44701792  |node|51.9791304|4.8574054|Polsbroek  |village|1199      |null   |
+|5435880522|node|52.2452013|5.3731599|Bunschoten |town   |21866     |null   |
+|947021601 |node|52.2177783|4.9372124|Zeilschool |null   |null      |yes    |
+    */
     //groupdf2.write.save("alldata.parquet")
    // groupdf2.filter(col("harbour") === "yes").show(10,false)
    // sys.exit(0)
     println("hehe3");
     val geoUDF = udf((lat: Double, lon:Double, res: Int) => h3Helper.toH3func(lat,lon,res))
     println("hehe4");
-    val h3mapdf=groupdf2.withColumn("H3",geoUDF(col("lat"),col("lon"),lit(10)))
-    .withColumn("H3Rough",geoUDF(col("lat"),col("lon"),lit(3)));
     
-    val harbourDF=h3mapdf.filter(col("harbour") === "yes" ).select(col("H3").as("harbourH3"),col("H3Rough"))
-    val placeDF=h3mapdf.filter(col("harbour").isNull).drop("harbour")
+    val h3mapdf=groupdf2.withColumn("H3",geoUDF(col("lat"),col("lon"),lit(10)))
+    .withColumn("H3Rough",geoUDF(col("lat"),col("lon"),lit(5)));
+    //
+    //println("showing data")
+    //h3mapdf.show(50,false)
+    //
+    /*
+ +-------+----+------+-----+---------+-------+------+-------+---------------+--------------+
+ |   					h3mapdf data 					      | +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
+ |id     |type|lat   |lon  |name     |place |popu  |harbour |     H3        |H3Rough        |
+ +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
+ |4484399|node|52.010|5.433|Leersum  |village|7511  |null   |8a1969053247fff|85196907fffffff|
+ |4471092|node|51.981|5.122|Hagestein|village|1455  |null   |8a196972e56ffff|85196973fffffff|
+ |4556876|node|52.174|5.290|Soest    |town   |39395 |null   |8a19691890a7fff|8519691bfffffff|
+ |9661556|node|52.116|4.835|Zegveld  |village|2310  |null   |8a196940980ffff|85196943fffffff|
+    */
+	
+    val harbourDF=h3mapdf.filter(col("harbour") === "yes" ).select(col("H3").as("harbourH3"),col("H3Rough")) // harbours and its H3 data 
+    val placeDF=h3mapdf.filter(col("harbour").isNull).drop("harbour") // places that are not harbour
+    
+    //println("showing data")
     //placeDF.show(false)
+    println("******************************************************")
+    println("*********** Finished reading OpenStreetMap ***********")
     return (placeDF,harbourDF)
+    /*
++----------+----+----------+---------+--------+-------+-----+---------------+---------------+
+|id        |type|lat       |lon      |name    |place  |popu |H3             |H3Rough        |
++----------+----+----------+---------+--------+-------+-----+---------------+---------------+
+|44843991  |node|52.0102642|5.4332757|Leersum |village|7511 |8a1969053247fff|85196907fffffff|
+|44710922  |node|51.9810496|5.1220284|Hageste |village|1455 |8a196972e56ffff|85196973fffffff|
+|45568761  |node|52.1746100|5.2909500|Soest   |town   |39395|8a19691890a7fff|8519691bfffffff|
+
+    */
 
 
   }
@@ -64,10 +136,10 @@ object Lab1 {
   def readALOS(alosDF:DataFrame):DataFrame = {
     val geoUDF = udf((lat: Double, lon:Double, res: Int) => h3Helper.toH3func(lat,lon,res))
     val h3df=alosDF.withColumn("H3",geoUDF(col("lat"),col("lon"),lit(10)))
+    println("******************************************************")
+    println("************** Finished reading ALOSMap **************")
     return h3df
     //h3df.show(5,false)
-   
-
   }
 //combineDF: combine openstreetmap & alos, 
 //           get the relations: name -> lan,lon
@@ -80,7 +152,7 @@ object Lab1 {
     val combine2=combinedDF_pre.groupBy("name").min("elevation").withColumnRenamed("min(elevation)","elevation")
       
     val combinedDF=combinedDF_pre.join(combine2,Seq("name","elevation")).dropDuplicates("name")
-    print("*******************************************************************************************************")
+    println("******************************************************")
   //  print("the original rows: "+combinedDF.count()+"after dropDuplicate: "+combinedDF.dropDuplicates("name").count()+"after drop name elevation"+combinedDF.dropDuplicates("name","elevation").count())
    //combinedDF.show(100,false)   
   //floodDF: place,num_evacuees, H3, H3Rough
@@ -95,7 +167,14 @@ object Lab1 {
     //  val output = floodDF.drop("H3","H3Rough")
    //    output.show(5)
    //floodDF.show(10,false)
-   floodDF.printSchema()   	
+  // floodDF.printSchema() 
+   /*
+   root
+  |-- place: string (nullable = true)
+  |-- floodH3: string (nullable = true)
+  |-- num_evacuees: integer (nullable = true)
+  |-- H3Rough: string (nullable = true)
+   */  	
    //safeDF - safe_name,safe_place,safe_population,H3, H3Rough   
    // row satisfied:
    // - safe_place == city | harbour
@@ -146,9 +225,10 @@ object Lab1 {
 // |28           |83196bfffffffff|Oegstgeest|23608       |8a19694b2417fff|Leiden     |123753         |
 
 
-
+     println("******************************************************")
+     println("*************** find the closest city ****************")
      val closestDest=floodToSafe //find the closest city for each flooded place, in "closestDest" each place is distinct
-       .join(floodToSafe.groupBy("place").min("city_distance").withColumnRenamed("min(city_distance)","city_distance"),Seq("city_distance","place")) //join fangfa
+       .join(floodToSafe.groupBy("place").min("city_distance").withColumnRenamed("min(city_distance)","city_distance"),Seq("city_distance","place")) //self-join 
        
      
    //  closestDest.show(100,false)
@@ -169,22 +249,27 @@ object Lab1 {
      
      val flood2=floodToSafeCH.groupBy("place").min("harbour_distance").withColumnRenamed("min(harbour_distance)","harbour_distance") //place is distinct
     // flood2.show(100,false) //no duplicate
+     println("******************************************************")
+     println("****** find the distance to the nearest harbour ******")
      val closestCH=floodToSafeCH
      .join(flood2,Seq("harbour_distance","place")) //for each flooded place, find the distance to the nearest harbour
     
-      closestCH.show(100,false)
-      closestCH.printSchema()
-     // seperate into two dataframes
-     // near_harbour: places that are closer to a harbour than a safe city
-     // near_city: places that are closer to a safe city
+      //closestCH.show(100,false)
+      //closestCH.printSchema()
+      
+      /*
+      seperate into two dataframes
+      |-- near_harbour: places that are closer to a harbour than a safe city
+      |-- near_city: places that are closer to a safe city
+     */
      
     //********** divide into 2 DFs ***********
     val near_harbour = closestCH.
      filter(col("harbour_distance") <= col("city_distance")).
      drop("city_distance","harbour_distance")
-     
-     println("cities closer to a harbour")
-     near_harbour.show(5,false) // close to harbour
+     println("******************************************************")
+     println("************ cities closer to a harbour **************")
+     //near_harbour.show(5,false) // close to harbour
      /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -201,8 +286,9 @@ object Lab1 {
      filter(col("harbour_distance") > col("city_distance")).
      drop("harbour_distance","city_distance")
      
-     println("cities closer to a safe city")
-     near_city.show(5,false) // close to city
+     println("******************************************************")
+     println("************ cities closer to a city  ****************")
+     //near_city.show(5,false) // close to city
      /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -222,8 +308,8 @@ object Lab1 {
      withColumn("safe_population", col("safe_population") * 0) // set the population of WaterWorld to 0
      val rest_popu = near_harbour.withColumn("num_evacuees",col("num_evacuees")*0.75)  // evacuees to the nearest city
      val near_harbour_new = rest_popu.union(change_popu).sort("place")	// Combined DF
-     
-     println("evacuees to harbour and city")
+     println("******************************************************")
+     println("************ evacuees to harbour and city ************")
      //near_harbour_new.show(50,false) // evacuees to harbour and city
      /*
      	+-----+------------+-----------+---------------+
@@ -239,8 +325,9 @@ object Lab1 {
      val relocate_output = near_harbour_new.union(near_city).
      sort("place")// Combine <near_harbour_new> and <near_city>
      
-     println("output => evacuees by place")
-     relocate_output.show(50,false)
+     println("******************************************************")
+     println("************* output => evacuees by place ************")
+     //relocate_output.show(50,false)
      /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -255,10 +342,12 @@ object Lab1 {
 	+-----+------------+-----------+---------------+
 
      */
-     println("***************************************")
-     println("*********** Saving data ***************")
-     relocate_output.drop("safe_population").write.orc("relocate.orc") // output as .orc file
-     println("********** Finished save **************")
+     /*
+     println("******************************************************")
+     println("******************* Saving data **********************")
+     relocate_output.drop("safe_population").write.orc("output/data/relocate.orc") // output as .orc file
+     println("******************* Finished save*********************")
+     */
      /* change the schema? 
      val schema = StructType(
                Array(
@@ -292,9 +381,9 @@ object Lab1 {
      val receive_output = receive_popu.
      withColumn("new_population",col("old_population") + col("evacuees_received")).
      drop("evacuees_received")
-  
-     println("output => population change of the destination ")
-     receive_output.show(50,false)
+     println("******************************************************")
+     println("*** output => population change of the destination ***")
+     //receive_output.show(50,false)
         /*
 	+-----------+--------------+--------------+
 	|destination|old_population|new_population|
@@ -304,10 +393,12 @@ object Lab1 {
 	+-----------+--------------+--------------+
 
      */
-     println("***************************************")
-     println("*********** Saving data ***************")
-     receive_output.write.orc("receive_output_13.orc")
-     println("********** Finished save **************")
+     /*
+     println("******************************************************")
+     println("******************* Saving data **********************")
+     receive_output.write.orc("/output/data/receive_output_13.orc")
+     println("******************* Finished save*********************")
+     */
   }
 
 
