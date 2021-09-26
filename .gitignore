@@ -6,6 +6,7 @@ target/
 build/
 !project/build.properties
 !project/plugins.sbt
+.sbt
 
 # eclipse
 build
