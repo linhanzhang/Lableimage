@@ -24,8 +24,8 @@ object Lab1 {
     // ************* process osm & alos dataset separately *******************
     //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset - corresponds to N052E005  
     //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
-    //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
-    //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
+   // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
+   // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
      val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
      val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
     
@@ -304,7 +304,7 @@ object Lab1 {
      
      println("***************************************")
      println("*********** Saving data ***************")
-     relocate_output.drop("safe_population").write.orc("relocate.orc") // output as .orc file
+    // relocate_output.drop("safe_population").write.orc("relocate.orc") // output as .orc file
      println("********** Finished save **************")
      /* change the schema? 
      val schema = StructType(
@@ -325,7 +325,7 @@ object Lab1 {
      agg(
      	sum("num_evacuees").as("evacuees_received"),
      	avg("safe_population").as("old_population")
-     	)
+     	);
      /*
      	+-----------+-----------------+--------------+                                  
 	|destination|evacuees_received|old_population|
@@ -337,15 +337,17 @@ object Lab1 {
      
      /********calculate the sum of evacuees********/
     
-  /*   val sum = relocate_output
+
+     	
+     val sum_popu = receive_popu
      	.groupBy()
-     	.sum("num_evacuees")
+     	.agg(sum("evacuees_received"))
      	.first
      	.get(0)
 	
      println("***************************************")
-     println("total number of evacuees is " + sum)
-     println("***************************************") */
+     println("total number of evacuees is " + sum_popu)
+     println("***************************************") 
      
      
      // ******* transform the output data into the required format **********
