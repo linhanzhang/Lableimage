@@ -111,8 +111,10 @@ object Lab1 {
     
     
     //********** calculate the coarse/fine-grained H3 value ****************
-    val h3mapdf=groupLessDF.withColumn("H3",geoUDF(col("lat"),col("lon"),lit(10)))
-    .withColumn("H3Rough",geoUDF(col("lat"),col("lon"),lit(5))); // this is for dividing the places into groups, and the calculation of distances will be done within each groups
+    val h3mapdf=groupLessDF
+	.withColumn("H3",geoUDF(col("lat"),col("lon"),lit(10)))
+    	.withColumn("H3Rough",geoUDF(col("lat"),col("lon"),lit(5)))
+	.cache() // this is for dividing the places into groups, and the calculation of distances will be done within each groups
     
      /*
  +-------+----+------+-----+---------+-------+------+-------+---------------+--------------+
