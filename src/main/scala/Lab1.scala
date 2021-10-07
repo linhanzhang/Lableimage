@@ -317,12 +317,12 @@ object Lab1 {
 
      
     //********** divide into 2 DFs ***********
+    println("******************************************************")
+    println("***** filter out the places closer to a harbour ******")
     val near_harbour = closestCH.
      filter(col("harbour_distance") <= col("city_distance")).
-
      drop("city_distance","harbour_distance")
-     println("******************************************************")
-     println("************ cities closer to a harbour **************")
+     
 
      //near_harbour.show(5,false) // close to harbour
      /*
@@ -336,14 +336,14 @@ object Lab1 {
      */
 
      
-     
+    println("******************************************************")
+    println("******* filter out the places closer to a city *******")
      val near_city = closestCH.
      filter(col("harbour_distance") > col("city_distance")).
      drop("harbour_distance","city_distance")
      
 
-     println("******************************************************")
-     println("************ cities closer to a city  ****************")
+    
 
      //near_city.show(5,false) // close to city
      /*
@@ -424,6 +424,8 @@ object Lab1 {
      */
      
      // ********* calculate the total number of evacuees to each destination ********
+     println("******************************************************")
+     println("******* Grouping evacuees by their destination *******")
      val receive_popu = relocate_output.groupBy("destination").
      agg(
      	sum("num_evacuees").as("evacuees_received"),
@@ -441,7 +443,8 @@ object Lab1 {
      /********calculate the sum of evacuees********/
     
 
-     	
+     println("******************************************************")
+     println("******** calculating total number of evacuees ********")
      val sum_popu = receive_popu
      	.groupBy()
      	.agg(sum("evacuees_received"))
