@@ -1,18 +1,51 @@
 # Lab 1 Report
 
->"More people died in the struggle against water than in the struggle against men". 
+> _"More people died in the struggle against water than in the struggle against men." _
+>
+>                                           _---- Pytheas Massiliensis, 350 BC _        
+                                            
+   <img align="right" width="300" src="images/The_Netherlands_compared_to_sealevel.png" >
 
-As the Greek geographer Pytheas noted of the Low Countries, flood has been a serious issue that haunted people in the Low Land for hundreds of years.  Currently, as approximately two thirds of the land in the Netherlands is below sea level, it is still extremely vulnerable to flooding. 
+As the Greek geographer noted of the Low Countries, flood has been a serious issue that haunted people in the Low Land for hundreds of years.  Currently, as approximately two thirds of the land in the Netherlands is below sea level, it is still extremely vulnerable to flooding. 
 
 This is the motivation of our work — Assume that all the flood control infrastratures in the Netherlands failed, and the sea level has rised a certain height. Residents living in the flooded areas needs to be evacuated into cities above the sea level. The goal of our project is to present a relocation plan for that situation.
 
 ## Usage
+The structure of our project is:
 
-> Describe how to use your program. You can assume the TAs who will be grading
-> this know how to do everything that is in the lab manual. You do not have to
-> repeat how to use e.g. Docker etc.
+```
 
-> Please do explain how to provide the correct inputs to your program.
+├── build.sbt
+├── project
+│   └── build.properties
+└── src
+    └── main
+        └── scala
+            └── Lab1.scala
+```
+
+After cloning the code from the repository, navigate to the root directory by typing in the following command in the terminal:
+
+```
+cd directory_to_Lab1/lab-1-group-09
+```
+
+Then start the sbt container in the root folder, it should start an interactive sbt process. Here, we can compile the sources by writing the compile command.
+```
+docker run -it --rm -v "`pwd`":/root sbt sbt
+sbt:Lab1 >compile
+```
+<p align="center">
+<img width="700" src="images/screenshot1.png" >
+</p>
+Now we are set up to run our program! Consider an **integer** that represent the height of the rising sea level(Unit : meter). Use run <height> command to start the process and you could get the following infomation. For example:
+```
+sbt:Lab1 >run 5
+```
+ <p align="center">
+<img width="700" src="images/screenshot2.png" >
+</p>
+
 
 ## Functional overview
 
