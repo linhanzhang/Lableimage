@@ -1,14 +1,12 @@
 # Lab 1 Report
 
-> "More people died in the struggle against water than in the struggle against men." 
->
->                                           ---- Pytheas Massiliensis, 350 BC       
-                                            
-   <img align="right" width="300" src="images/The_Netherlands_compared_to_sealevel.png" >
+<img align="right" width="370" src="images/The_Netherlands_compared_to_sealevel.png" alt="The Netherlands compared to sea level" title="About two thirds of the area in the Netherlands is below sea level!"> 
 
-As the Greek geographer noted of the Low Countries, flood has been a serious issue that haunted people in the Low Land for hundreds of years.  Currently, as approximately two thirds of the land in the Netherlands is below sea level, it is still extremely vulnerable to flooding. 
+> "More people died in the struggle against water than in the struggle against men." <p align="right">---- Pytheas Massiliensis, 350 BC</p>  
 
-This is the motivation of our work — Assume that all the flood control infrastratures in the Netherlands failed, and the sea level has rised a certain height. Residents living in the flooded areas needs to be evacuated into cities above the sea level. The goal of our project is to present a relocation plan for that situation.
+As the Greek geographer noted of the Low Countries, flood has been a serious issue that haunted people in the Low Land for hundreds of years.  Currently, as shown in the graph on the right side, approximately two thirds of the land in the Netherlands is below sea level, it is still extremely vulnerable to flooding. 
+
+This is the motivation of our work — Assume that all the flood control infrastratures in the Netherlands failed, and the sea level has rised a certain height. Residents living in the flooded areas need to be evacuated into cities above the sea level. The goal of our project is to present a relocation plan for this situation.
 
 ## Usage
 The structure of our project is:
@@ -34,14 +32,14 @@ Then start the sbt container in the root folder, it should start an interactive 
 ```
 docker run -it --rm -v "`pwd`":/root sbt sbt
 sbt:Lab1 >compile
-sbt:Lab1 >run 5
 ```
 <p align="center">
 <img width="700" src="images/screenshot1.png" >
 </p>
-Now we are set up to run our program! Consider an integer that represent the height of the rising sea level(unit : meter). Use `run height` command to start the process and you could get the following infomation. For example:
 
- ```
+Now we are set up to run our program! Consider an integer that represent the height of the rising sea level (unit : meter).<br/>
+Use ` run height `  command to start the process and you could get infomation like this:  
+```
 sbt:Lab1 >run 5
 ```  
 
@@ -51,14 +49,27 @@ sbt:Lab1 >run 5
 
 
 ## Functional overview
+~~The objects and functions we defined are: ~~
+~~```
+├── object Lab1 
+│   └── main
+|   └── readOpenStreetMap(df:DataFrame) : (DataFrame,DataFrame)
+|   └── readALOS(alosDF:DataFrame):DataFrame
+|   └── combineDF(df1:DataFrame,df2:DataFrame,riseMeter:Int):(DataFrame,DataFrame)
+|   └── findClosestDest(floodDF:DataFrame,safeDF:DataFrame,harbourDF:DataFrame)
+└── h3helper: contains processes related to h3
+    └── toH3func(lat:Double,lon:Double,res:Int):String
+    └── getH3Distance(origin:String,des:String):Int
+            
+```
 
   
 > Introduce how you have approached the problem, and the global steps of your
-> solution. 
-> 
-  
-  
+solution. 
 
+
+  
+  
   
 > Example:
 >
