@@ -1,16 +1,10 @@
 # Lab 1 Report
 
-> This is the template for your lab report. Some guidelines and rules apply.
+>"More people died in the struggle against water than in the struggle against men". 
 
-> You can only change the *contents* of the sections, but not the section 
-> headers above the second level of hierarchy! This means you can only add
-> headers starting with `###`. 
- 
-> You must remove the text fields prefixed with `>`, such as this one, resulting
-> in a README.md without this template text in between.
+As the Greek geographer Pytheas noted of the Low Countries, flood has been a serious issue that haunted people in the Low Land for hundreds of years.  Currently, as approximately two thirds of the land in the Netherlands is below sea level, it is still extremely vulnerable to flooding. 
 
-> Any report violating these rules will be immediately rejected for corrections 
-> (i.e. as if there is no report). 
+This is the motivation of our work — Assume that all the flood control infrastratures in the Netherlands failed, and the sea level has rised a certain height. Residents living in the flooded areas needs to be evacuated into cities above the sea level. The goal of our project is to present a relocation plan for that situation.
 
 ## Usage
 
