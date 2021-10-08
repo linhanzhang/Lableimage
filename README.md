@@ -1,8 +1,8 @@
 # Lab 1 Report
 
-> _"More people died in the struggle against water than in the struggle against men." _
+> "More people died in the struggle against water than in the struggle against men." 
 >
->                                           _---- Pytheas Massiliensis, 350 BC _        
+>                                           ---- Pytheas Massiliensis, 350 BC       
                                             
    <img align="right" width="300" src="images/The_Netherlands_compared_to_sealevel.png" >
 
@@ -34,24 +34,32 @@ Then start the sbt container in the root folder, it should start an interactive 
 ```
 docker run -it --rm -v "`pwd`":/root sbt sbt
 sbt:Lab1 >compile
+sbt:Lab1 >run 5
 ```
 <p align="center">
 <img width="700" src="images/screenshot1.png" >
 </p>
-Now we are set up to run our program! Consider an **integer** that represent the height of the rising sea level(Unit : meter). Use run <height> command to start the process and you could get the following infomation. For example:
-```
+Now we are set up to run our program! Consider an integer that represent the height of the rising sea level(unit : meter). Use `run height` command to start the process and you could get the following infomation. For example:
+
+ ```
 sbt:Lab1 >run 5
-```
- <p align="center">
+```  
+
+<p align="center">
 <img width="700" src="images/screenshot2.png" >
 </p>
 
 
 ## Functional overview
 
+  
 > Introduce how you have approached the problem, and the global steps of your
 > solution. 
 > 
+  
+  
+
+  
 > Example:
 >
 > ### Step 1: Preparing the data
