@@ -414,12 +414,12 @@ object Lab1 {
 
      */
 
-    /*
+    
      println("******************************************************")
      println("******************* Saving data **********************")
-     relocate_output.drop("safe_population").write.orc("output/data/relocate.orc") // output as .orc file
-     println("******************* Finished save*********************")
-     */
+     relocate_output.drop("safe_population").write.mode("overwrite").orc("output/data/relocate.orc") // output as .orc file
+     println("****************** Finished save *********************")
+     
 
     /* 
      val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
@@ -457,9 +457,9 @@ object Lab1 {
       .first
       .get(0)
 
-    println("***************************************")
-    println("total number of evacuees is " + sum_popu)
-    println("***************************************")
+    println("******************************************************")
+    println("|    total number of evacuees is " + sum_popu + "    |")
+    println("******************************************************")
 
     // ******* transform the output data into the required format **********
     val receive_output = receive_popu
@@ -482,12 +482,12 @@ object Lab1 {
 	+-----------+--------------+--------------+
 
      */
-    /*
+    
      println("******************************************************")
      println("******************* Saving data **********************")
-     receive_output.write.orc("/output/data/receive_output_13.orc")
-     println("******************* Finished save*********************")
-     */
+     receive_output.write.mode("overwrite").orc("/output/data/receive_output_13.orc")
+     println("****************** Finished save *********************")
+    
   }
 
 }
