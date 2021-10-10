@@ -7,7 +7,7 @@ import scala.sys.process._
 import java.text.SimpleDateFormat
 import java.util.Date
 
-
+object Lab1 {
   val geoUDF = udf((lat: Double, lon:Double, res: Int) => h3Helper.toH3func(lat,lon,res))
   
  // val distanceUDF = udf((origin:String,des:String) => h3Helper.getH3Distance(origin,des))
@@ -50,8 +50,6 @@ import java.util.Date
     // *************** find the closest destination *************
 
     findClosestDest(floodDF, safeDF, harbourDF)
-    //  change the log levels 
-    Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
     // Stop the underlying SparkContext
     spark.stop
   }
