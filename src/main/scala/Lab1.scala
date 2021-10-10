@@ -4,13 +4,15 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.DataFrame
 import scala.sys.process._
+import org.apache.log4j.{Level, Logger}
+
 
 object Lab1 {
-
+// converts latitude and longitude data into H3 index
   val geoUDF = udf((lat: Double, lon: Double, res: Int) =>
     h3Helper.toH3func(lat, lon, res)
   )
-
+// calculates the distance between two places based on h3 toolbox
   val distanceUDF =
     udf((origin: String, des: String) => h3Helper.getH3Distance(origin, des))
 
@@ -26,15 +28,13 @@ object Lab1 {
     spark.sparkContext.setLogLevel("ERROR") //stop DEBUG and INFO messages 
 
     // ************* process osm & alos dataset separately *******************
-    //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset - corresponds to N052E005
-    //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
+    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset - corresponds to N052E005
+    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
 
     // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
-    val (df1, harbourDF) = readOpenStreetMap(
-      spark.read.format("orc").load("netherlands-latest.osm.orc")
-    ); //complete osm dataset
-    val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
+    //val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+   // val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
 
     // ************** combine two datasets with H3 ************************
     val (floodDF, safeDF) = combineDF(
@@ -52,7 +52,8 @@ object Lab1 {
     // *************** find the closest destination *************
 
     findClosestDest(floodDF, safeDF, harbourDF)
-
+    //  change the log levels 
+    Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
     // Stop the underlying SparkContext
     spark.stop
   }
@@ -69,9 +70,8 @@ object Lab1 {
         explode(col("tags"))
       )
       .filter(
-        col("key") === "name" || col("key") === "place" || col(
-          "key"
-        ) === "population" || col("key") === "harbour"
+        col("key") === "name" || col("key") === "place" || 
+        col("key") === "population" || col("key") === "harbour"
       )
 
     // ********** make the keys to be column names *************
@@ -417,7 +417,7 @@ object Lab1 {
     
      println("******************************************************")
      println("******************* Saving data **********************")
-     relocate_output.drop("safe_population").write.mode("overwrite").orc("output/data/relocate.orc") // output as .orc file
+     //relocate_output.drop("safe_population").write.mode("overwrite").orc("output/data/relocate.orc") // output as .orc file
      println("****************** Finished save *********************")
      
 
@@ -458,7 +458,7 @@ object Lab1 {
       .get(0)
 
     println("******************************************************")
-    println("|    total number of evacuees is " + sum_popu + "    |")
+    println("|        total number of evacuees is " + sum_popu + "        |")
     println("******************************************************")
 
     // ******* transform the output data into the required format **********
@@ -485,7 +485,7 @@ object Lab1 {
     
      println("******************************************************")
      println("******************* Saving data **********************")
-     receive_output.write.mode("overwrite").orc("/output/data/receive_output_13.orc")
+     //receive_output.write.mode("overwrite").orc("/output/data/receive_output_13.orc")
      println("****************** Finished save *********************")
     
   }
