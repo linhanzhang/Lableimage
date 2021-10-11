@@ -1,6 +1,6 @@
 # Lab 1 Report
 
-<img align="right" width="370" src="images/The_Netherlands_compared_to_sealevel.png" alt="The Netherlands compared to sea level" title="About two thirds of the area in the Netherlands is below sea level!"> 
+<img align="right" width="370" src="images/The_Netherlands_compared_to_sealevel.png" alt="The Netherlands compared to sea level" title="Netherlands v.s. sea level"> 
 
 > "More people died in the struggle against water than in the struggle against men." <p align="right">---- Pytheas Massiliensis, 350 BC</p>  
 
@@ -38,7 +38,7 @@ sbt:Lab1 >compile
 </p>
 
 Now we are set up to run our program! Consider an integer that represent the height of the rising sea level (unit : meter).<br/>
-Use ` run height `  command to start the process and you could get infomation like this:  
+Use ` run height `  command to start the process and you could get infomation like the image below. This way of running the spark application is mostly used for test running. Next we are going to introduce you another way of building and running this Spark application which enables developer to inspect the event log on the spark history server.  
 ```
 sbt:Lab1 >run 5
 ```  
@@ -47,8 +47,15 @@ sbt:Lab1 >run 5
 <img width="700" src="images/screenshot2.png" >
 </p>
 
-Another way of using the program is by submitting it to a local Spark cluster. To do so, we need to build a JAR using the ` package ` command in SBT. It will be located in ` target/scala-version/project_name_version.jar `.
+By using the ` spark-submit `  command, we set the application to run on a local Spark "cluster". Since we have already build the JAR, all you need to do is to run the code below:
 
+```
+docker run -it --rm -v "`pwd`":/io -v "`pwd`"/spark-events:/spark-events spark-submit --packages 'com.uber:h3:3.7.0' target/scala-2.12/lab-1_2.12-1.0.jar height
+```
+In which the last argument ` height ` represents the height of sea level rise. Then you could get information like the below image.
+<p align="center">
+<img width="700" src="images/spark-submit.png" alt="running Spark application using spark-submit command" title="spark-submit command" >
+</p>
 
 
 
