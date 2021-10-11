@@ -41,7 +41,7 @@ object Lab1 {
     // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
     val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-     val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
+    val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
 
     // ************** combine two datasets with H3 ************************
     val (floodDF, safeDF) = combineDF(
@@ -391,7 +391,10 @@ orld |0              |
     //  val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
     //  output_12.write.orc("relocate_output_12.orc")
 
-     //val testread = spark.read.format("orc").load("output_12.orc")
+     //val testread1 = spark.read.format("orc").load("output_12.orc")
+     //val testread2 = spark.read.format("orc").load("output/data/relocate.orc")
+    //val testread3 = spark.read.format("orc").load("output/data/receive_output.orc")
+
     
 
     // ********* calculate the total number of evacuees to each destination ********
@@ -438,7 +441,7 @@ orld |0              |
     println("******************************************************")
     println("*** output => population change of the destination ***")
 
-    //receive_output.show(100,false)
+    // receive_output.show(100,false)
     /*
 	+-----------+--------------+--------------+
 	|destination|old_population|new_population|
@@ -453,7 +456,7 @@ orld |0              |
     println("******************* Saving data **********************")
     receive_output.write
       .mode("overwrite")
-      .orc("/output/data/receive_output.orc")
+      .orc("output/data/receive_output.orc")
     //  .orc("/output/data/receive_output" + currTime + ".orc")
     println("******************* Finished save*********************")
 
