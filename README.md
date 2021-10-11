@@ -47,6 +47,11 @@ sbt:Lab1 >run 5
 <img width="700" src="images/screenshot2.png" >
 </p>
 
+Another way of using the program is by submitting it to a local Spark cluster. To do so, we need to build a JAR using the ` package ` command in SBT. It will be located in ` target/scala-version/project_name_version.jar `.
+
+
+
+
 
 ## Functional overview
 ~~The objects and functions we defined are: ~~
