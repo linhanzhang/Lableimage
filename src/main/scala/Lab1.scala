@@ -514,7 +514,7 @@ object Lab1 {
     
      println("******************************************************")
      println("******************* Saving data **********************")
-     receive_output.write.orc("/output/data/receive_output"+currTime+".orc")
+     receive_output.write.orc("output/data/receive_output"+currTime+".orc")
      println("******************* Finished save*********************")
      
   }
