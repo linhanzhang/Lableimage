@@ -32,16 +32,16 @@ object Lab1 {
     spark.sparkContext.setLogLevel("ERROR")
     spark.conf.set("spark.sql.shuffle.partitions", 8)
     // ************* process osm & alos dataset separately *******************
-     val (df1, harbourDF) = readOpenStreetMap(
-       spark.read.format("orc").load("utrecht-latest.osm.orc")
-     ); // Utrecht dataset - corresponds to N052E005
-     val df2 = readALOS(
-       spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")
-     ); //Utrecht partial alos dataset
+    //  val (df1, harbourDF) = readOpenStreetMap(
+    //    spark.read.format("orc").load("utrecht-latest.osm.orc")
+    //  ); // Utrecht dataset - corresponds to N052E005
+    //  val df2 = readALOS(
+    //    spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")
+    //  ); //Utrecht partial alos dataset
     // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
-    // val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-    //  val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
+    val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+     val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
 
     // ************** combine two datasets with H3 ************************
     val (floodDF, safeDF) = combineDF(
@@ -279,7 +279,7 @@ val closest_harbour = floodDF. crossJoin(harbourDF)// find distance to each harb
 val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
     .select("place","num_evacuees","harbour_distance","destination","city_distance","safe_population")
     println("floodToSafe")
-    floodToSafe.show(50,false)
+    //floodToSafe.show(50,false)
     /*
       seperate into two dataframes
       |-- near_harbour: places that are closer to a harbour than a safe city
@@ -362,7 +362,7 @@ val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
     println("******************************************************")
     println("************* output => evacuees by place ************")
 
-     relocate_output.show(100,false)
+     //relocate_output.show(100,false)
     /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destin    // relocate_output.show(100,false)
@@ -376,22 +376,23 @@ orld |0              |
 
      */
 
-    // println("******************************************************")
-    // println("******************* Saving data **********************")
-    // val currTime = new SimpleDateFormat("yyyy-MM-dd-HH:mm").format(new Date)
-    // relocate_output
-    //   .drop("safe_population")
-    //   .write
-    //   .mode("overwrite")
-    //   .orc("output/data/relocate" + currTime + ".orc") // output as .orc file
-    // println("******************* Finished save*********************")
+    println("******************************************************")
+    println("******************* Saving data **********************")
+    //val currTime = new SimpleDateFormat("yyyy-MM-dd-HH:mm").format(new Date)
+    relocate_output
+      .drop("safe_population")
+      .write
+      .mode("overwrite")
+      .orc("output/data/relocate.orc") // output as .orc file
+      //.orc("output/data/relocate" + currTime + ".orc") // output as .orc file
+    println("******************* Finished save*********************")
 
-    /*
-     val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
-     output_12.write.orc("relocate_output_12.orc")
+    
+    //  val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
+    //  output_12.write.orc("relocate_output_12.orc")
 
-     val testread = spark.read.format("orc").load("output_12.orc")
-     */
+     //val testread = spark.read.format("orc").load("output_12.orc")
+    
 
     // ********* calculate the total number of evacuees to each destination ********
     println("******************************************************")
@@ -437,7 +438,7 @@ orld |0              |
     println("******************************************************")
     println("*** output => population change of the destination ***")
 
-    receive_output.show(100,false)
+    //receive_output.show(100,false)
     /*
 	+-----------+--------------+--------------+
 	|destination|old_population|new_population|
@@ -448,12 +449,13 @@ orld |0              |
 
      */
 
-    // println("******************************************************")
-    // println("******************* Saving data **********************")
-    // receive_output.write
-    //   .mode("overwrite")
-    //   .orc("/output/data/receive_output" + currTime + ".orc")
-    // println("******************* Finished save*********************")
+    println("******************************************************")
+    println("******************* Saving data **********************")
+    receive_output.write
+      .mode("overwrite")
+      .orc("/output/data/receive_output.orc")
+    //  .orc("/output/data/receive_output" + currTime + ".orc")
+    println("******************* Finished save*********************")
 
   }
 

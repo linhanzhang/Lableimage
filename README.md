@@ -47,6 +47,7 @@ sbt:Lab1 >run 5
 <img width="700" src="images/screenshot2.png" >
 </p>
 
+Another way of using the program is by submitting it to a local Spark cluster. 
 
 ## Functional overview
 ~~The objects and functions we defined are: ~~
