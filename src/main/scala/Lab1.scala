@@ -275,6 +275,9 @@ object Lab1 {
 
    // val listFlood=floodDF.select("place").rdd.map(r=>r.getString(0)).collect
     //val safeMap=safeDF.rdd.map(row => (row.getString(1) -> row.getString(0))).collectAsMap()
+    
+    
+    //safeDF - destination,safeH3,safe_population  
     println("rdd start ==================")
     val safeMap=safeDF.rdd.map(x => (x.get(1).toString, x.get(0).toString, x.get(2).toString.toInt)).collect() //
     val safeHarbour=harbourDF.rdd.map(r=>r.get(0).toString).collect()
@@ -291,8 +294,8 @@ object Lab1 {
  	} */
     
    
-    val test=typedLit(safeMap)
-    println(test)
+  //  val test=typedLit(safeMap)
+  //  println(test)
      // place,floodH3,num_evacuees,destination,city_distance,safe_population,harbour_distance
     // val arr=Array("8a1969623707fff","8a1fa4926007fff")
      val floodToSafe=floodDF
@@ -303,7 +306,7 @@ object Lab1 {
      	.withColumnRenamed("_3","safe_population")
         .withColumn("harbour_distance",findClosestHarbour(col("floodH3"),lit(safeHarbour)))
         .cache()
-     floodToSafe.show(50,false)
+    // floodToSafe.show(50,false)
     // sys.exit(0)
 
 // +-------------+---------------+----------+------------+---------------+-----------+---------------+
@@ -524,7 +527,7 @@ object Lab1 {
     
      println("******************************************************")
      println("******************* Saving data **********************")
-     receive_output.write.orc("/output/data/receive_output"+currTime+".orc")
+     receive_output.write.orc("output/data/receive_output"+currTime+".orc")
      println("******************* Finished save*********************")
      
   }
@@ -564,7 +567,7 @@ object h3Helper {
     	var min=9999999
     	var tuple:(String,Int,Int)=("no safe city found",9999999,0)
     	
-    	for ((safeH3,place,safe_population)<-safeMap){
+    	for ((place,safeH3,safe_population)<-safeMap){
     		val distance:Int=h3.h3Distance(origin,safeH3)
     		if(distance<min){
     			min=distance
