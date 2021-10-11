@@ -32,16 +32,16 @@ object Lab1 {
     spark.sparkContext.setLogLevel("ERROR")
     spark.conf.set("spark.sql.shuffle.partitions", 8)
     // ************* process osm & alos dataset separately *******************
-    //  val (df1, harbourDF) = readOpenStreetMap(
-    //    spark.read.format("orc").load("utrecht-latest.osm.orc")
-    //  ); // Utrecht dataset - corresponds to N052E005
-    //  val df2 = readALOS(
-    //    spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")
-    //  ); //Utrecht partial alos dataset
+     val (df1, harbourDF) = readOpenStreetMap(
+       spark.read.format("orc").load("utrecht-latest.osm.orc")
+     ); // Utrecht dataset - corresponds to N052E005
+     val df2 = readALOS(
+       spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")
+     ); //Utrecht partial alos dataset
     // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
-     val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-     val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
+    // val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+    //  val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
 
     // ************** combine two datasets with H3 ************************
     val (floodDF, safeDF) = combineDF(
@@ -241,15 +241,24 @@ object Lab1 {
       safeDF: DataFrame,
       harbourDF: DataFrame
   ) {
-    val closest_city = floodDF. crossJoin(safeDF)// find all the possible evacuation destinations
+    val eva_cities = floodDF. crossJoin(safeDF)// find all the possible evacuation destinations
         .withColumn("city_distance",distanceUDF(col("floodH3"),col("safeH3")))
-        .groupBy("place")
+                        // eva_cities.show(50,false)
+
+    val min_city = eva_cities.groupBy("place")
         .agg(
         min("city_distance").as("city_distance"), // find the closest safe city
-        first("num_evacuees").as("num_evacuees"),
-        first("destination").as("destination"),
-        first("safe_population").as("safe_population")
+        
+        // first("num_evacuees").as("num_evacuees"),
+        // first("destination").as("destination"),
+        // first("safe_population").as("safe_population")
         )
+                // min_city.show(50,false)
+
+    val closest_city = min_city.join(eva_cities, Seq("place","city_distance")) // join the original dataframe
+      .dropDuplicates("place","city_distance") // avoid duplicate due to the same city_distance
+        println("closest_city")
+        // closest_city.show(50,false)
 
 // +-------------------+-------------+-----------+---------------+
 // |place              |city_distance|destination|safe_population|
@@ -264,10 +273,13 @@ val closest_harbour = floodDF. crossJoin(harbourDF)// find distance to each harb
     .groupBy("place")
     .min("harbour_distance") // choose the cloestest one
     .withColumnRenamed("min(harbour_distance)","harbour_distance")
+    println("closest_harbour")
+    // closest_harbour.show(50,false)
     // join closest_city with closest_harbour based on place name 
 val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
     .select("place","num_evacuees","harbour_distance","destination","city_distance","safe_population")
-    //floodToSafe.show(50,false)
+    println("floodToSafe")
+    floodToSafe.show(50,false)
     /*
       seperate into two dataframes
       |-- near_harbour: places that are closer to a harbour than a safe city
@@ -280,6 +292,7 @@ val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
       .drop("city_distance", "harbour_distance")
     println("******************************************************")
     println("************ cities closer to a harbour **************")
+    // near_harbour.show(50,false)
     /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -293,9 +306,10 @@ val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
     val near_city = floodToSafe
       .filter(col("harbour_distance") > col("city_distance"))
       .drop("harbour_distance", "city_distance")
-
     println("******************************************************")
     println("************ cities closer to a city  ****************")
+    // near_city.show(50,false)
+
     /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -328,7 +342,7 @@ val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
       rest_popu.union(change_popu).sort("place") // Combined DF
     println("******************************************************")
     println("************ evacuees to harbour and city ************")
-    //near_harbour_new.show(50,false) // evacuees to harbour and city
+    // near_harbour_new.show(50,false) // evacuees to harbour and city
     /*
      	+-----+------------+-----------+---------------+
 	|place|num_evacuees|destination|safe_population|
@@ -348,13 +362,11 @@ val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
     println("******************************************************")
     println("************* output => evacuees by place ************")
 
-    relocate_output.show(100,false)
+     relocate_output.show(100,false)
     /*
      	+-----+------------+-----------+---------------+
-	|place|num_evacuees|destination|safe_population|
-	+-----+------------+-----------+---------------+
-	|A    |100.0       |C137       |1000           |
-	|B    |25.0        |Waterworld |0              |
+	|place|num_evacuees|destin    // relocate_output.show(100,false)
+orld |0              |
 	|B    |75.0        |C137       |1000           |
 	|C    |75.0        |C137       |1000           |
 	|C    |25.0        |Waterworld |0              |
@@ -406,7 +418,7 @@ val floodToSafe = closest_city.join(closest_harbour, Seq("place"), "inner")
     println("********* calculate total number of evacuees *********")
        val sum_popu = receive_popu
       .groupBy()
-      .agg(sum("evacuees_received"))
+      .sum("evacuees_received")
       .first
       .get(0)
 
