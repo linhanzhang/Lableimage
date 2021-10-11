@@ -37,12 +37,12 @@ object Lab1 {
     
     // ************* process osm & alos dataset separately *******************
     //val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset - corresponds to N052E005  
-    //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
+    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //Utrecht partial alos dataset
 
-  //  val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
+    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     //val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
-    val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
-     val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
+ //   val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+   //  val df2=readALOS(spark.read.load("parquet/*"));    //complete alos dataset 
     
     
     // ************** combine two datasets with H3 ************************
@@ -275,15 +275,24 @@ object Lab1 {
 
    // val listFlood=floodDF.select("place").rdd.map(r=>r.getString(0)).collect
     //val safeMap=safeDF.rdd.map(row => (row.getString(1) -> row.getString(0))).collectAsMap()
-    val safeMap=safeDF.rdd.map(x => (x.get(1).toString, x.get(0).toString, x.get(2).toString.toInt)).collect()
+    println("rdd start ==================")
+    val safeMap=safeDF.rdd.map(x => (x.get(1).toString, x.get(0).toString, x.get(2).toString.toInt)).collect() //
     val safeHarbour=harbourDF.rdd.map(r=>r.get(0).toString).collect()
+    println("rdd finish ==================")
     println("safeMap:")
  //   println(safeHarbour)
  //   println(lit(safeHarbour))
+ 
+ /*	for{
+ 		(name,map)<-
+ 	
+ 	
+ 	
+ 	} */
     
    
-   // val test=typedLit(safeMap)
-  //  println(test)
+    val test=typedLit(safeMap)
+    println(test)
      // place,floodH3,num_evacuees,destination,city_distance,safe_population,harbour_distance
     // val arr=Array("8a1969623707fff","8a1fa4926007fff")
      val floodToSafe=floodDF
@@ -293,7 +302,8 @@ object Lab1 {
      	.withColumnRenamed("_2","city_distance")
      	.withColumnRenamed("_3","safe_population")
         .withColumn("harbour_distance",findClosestHarbour(col("floodH3"),lit(safeHarbour)))
-   //  floodToSafe.show(20,false)
+        .cache()
+     floodToSafe.show(50,false)
     // sys.exit(0)
 
 // +-------------+---------------+----------+------------+---------------+-----------+---------------+
@@ -501,7 +511,7 @@ object Lab1 {
      println("******************************************************")
      println("*** output => population change of the destination ***")
 
-   //  receive_output.show(50,false)
+    // receive_output.show(50,false)
         /*
 	+-----------+--------------+--------------+
 	|destination|old_population|new_population|
@@ -539,7 +549,7 @@ object h3Helper {
        // println("input safemap")
         //h3, name , safepopu
        // println(safeMap)
-    	for(k <-1 to 200){
+    	/*for(k <-1 to 200){
     	  
     	    val neighbours=h3.kRing(origin,k)
     	    for((safeH3,place,safe_population)<-safeMap){
@@ -549,16 +559,30 @@ object h3Helper {
     	    	    return (place,h3.h3Distance(origin,safeH3),safe_population.toInt)
     	    	}
     	    }
+    	} */
+    	//val index=0
+    	var min=9999999
+    	var tuple:(String,Int,Int)=("no safe city found",9999999,0)
+    	
+    	for ((safeH3,place,safe_population)<-safeMap){
+    		val distance:Int=h3.h3Distance(origin,safeH3)
+    		if(distance<min){
+    			min=distance
+    			tuple=(place,distance,safe_population)
+    		
+    		}
     	}
+    	
+    	return tuple
     
     
        
-       return ("no such city",0,9999)
+     //  return ("no such city",0,9999)
     
     }
     
     def getClosestDest(origin:String,harbours:Array[String]):Int={
-    	for(k <-1 to 50){
+    	/*for(k <-1 to 50){
     	    val neighbours=h3.kRing(origin,k)
     	    for(harbour<-harbours){
     	    	if(neighbours.contains(harbour)){   //means that the city is near the ori
@@ -566,7 +590,19 @@ object h3Helper {
     	    	}
     	    }
     	}
-    	return 9999
+    	*/
+    	
+    	var min=9999999
+    	//val distance=0
+    	
+    	for(harbour<-harbours){
+    			val distance=h3.h3Distance(origin,harbour)
+    	    	if(distance<min){   //means that the city is near the ori
+    	    	    min=distance
+    	    	}
+    	}
+    	
+    	return min
     
     }
     
