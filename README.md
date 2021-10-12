@@ -47,7 +47,7 @@ sbt:Lab1 >run 5
 <img width="700" src="images/screenshot2.png" >
 </p>
 
-By using the ` spark-submit `  command, we set the application to run on a local Spark "cluster". Since we have already build the JAR, all you need to do is to run the code below:
+By using the ` spark-submit `  command, we set the application to run on a local Spark "cluster". Since we have already built the JAR, all you need to do is to run the code below:
 
 ```
 docker run -it --rm -v "`pwd`":/io -v "`pwd`"/spark-events:/spark-events spark-submit --packages 'com.uber:h3:3.7.0' target/scala-2.12/lab-1_2.12-1.0.jar height
