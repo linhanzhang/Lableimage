@@ -61,33 +61,33 @@ In which the last argument ` height ` represents the height of sea level rise. T
 
 
 ## Functional overview
- 
-> Introduce how you have approached the problem, and the global steps of your
-solution. 
+> Introduce how you have approached the problem, and the global steps of your solution. 
 ### Step 1: Collecting valid data 
-  * We read in data from OpenStreetMap and filter out invalid information based on their tag. 
-  * 
+  * We first read in raw data from OpenStreetMap and group them by place. Then, invalid data are filtered out, the remainder are stored into dataframe [groupLessDF]. 
+  * After calculating corresponding H3 index values, we get all the information we need in dataframe [h3mapdf]. Since we are going to re-use [h3mapdf] for the next process, it is stored in memory in order to get better performance.
+  * The data set is divided into two dataframes : [harbourDF] for harbours, [placeDF] for other places.
 ### Step 2: Aggregating data
-  * 
+  * We defined function ` combineDF ` to combine data from OpenStreetMap and ALOS into [combinedDF]. 
+  * Acquired elevation data from ALOS, we can determine whether a place is flooded based on the input ` height ` . The results are seperated into [floodDF] and [safeDF].
+  * To make the application type-safe, we added ` Typecheck ` function to indicate correct input type and range for the users.
 ### Step 3: Matching the flooded region to the optimal shelter
+  * We defined function ` findClosestDest ` for the following operations. There are two ways of implementing it: 
+     1. Match the flooded place with all the safe places and compare the distances
+     2. Narrow the search attempts to places within the same large H3 tile
+  * [floodToSafe] dataframe stores information of each flooded city and its distances to the nearest safe city and harbour. 
 ### Step 4: Calculating evacuation plan
-
-  
-  
-  
-> Example:
->
-> ### Step 1: Preparing the data
->
-> * We want to be as type-safe as possible so we've declared a case class X
->   with the fields y and z. 
-> * We are now able to load the ORC file into the DataSet\[X\].
+  * By comparing the distances to the city and the harbour, we divide the flooded places into two groups, namely:
+     *  [near_city] places that are closer to a safe city 
+     *  [near_harbour] places that are closer to a harbour.
+  * Finally, we calculate the change of population for the plan according to the evacuation rules and output the result as ` .orc ` files.
 
 > Take into consideration your robustness level (see Rubric), and what you had
 > to do to make your answer as accurate as possible. Explain what information
 > was missing and how you have mitigated that problem.
 
 ## Result
+ 
+<img align="right" width="370" src="images/result10.png" alt="Result when height=10" title="Result when height=10"> 
  
 > Present the output of your program. Explain what could be improved (if 
 > applicable).
