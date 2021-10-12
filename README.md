@@ -60,6 +60,8 @@ In which the last argument ` height ` represents the height of sea level rise. T
 
 
 
+
+
 ## Functional overview
 > Introduce how you have approached the problem, and the global steps of your solution. 
 ### Step 1: Collecting valid data 
@@ -86,9 +88,47 @@ In which the last argument ` height ` represents the height of sea level rise. T
 > was missing and how you have mitigated that problem.
 
 ## Result
- 
-<img align="right" width="370" src="images/result10.png" alt="Result when height=10" title="Result when height=10"> 
- 
+
+When the application finished, information showing on the screen is like this:
+<p align = "center" >
+<img width="700" src="images/result10.png" alt="Result when height=10" title="Result when height=10"> 
+</p>
+
+Saved data:
+
+```
++------------------------+------------+-----------+
+|place                   |num_evacuees|destination|
++------------------------+------------+-----------+
+|Aadorp                  |1520.0      |Enschede   |
+|Aagtekerke              |1156.5      |Maastricht |
+|Aagtekerke              |385.5       |Waterworld |
+|Aalden                  |1222.5      |Enschede   |
+|Aalden                  |407.5       |Waterworld |
+|Aalsmeer                |16626.0     |Enschede   |
+|Aalsmeer                |5542.0      |Waterworld |
+|Aalsmeerderbrug         |375.75      |Enschede   |
+|Aalsmeerderbrug         |125.25      |Waterworld |
+|Aalst                   |1576.5      |Maastricht |
+|Aalst                   |525.5       |Waterworld |
+......
+
++-----------+--------------+--------------+
+|destination|old_population|new_population|
++-----------+--------------+--------------+
+|Tilburg    |199128.0      |3945939.25    |
+|Eindhoven  |226921.0      |690818.5      |
+|Waterworld |0.0           |3061754.0     |
+|Enschede   |148874.0      |533033.25     |
+|Ede        |72460.0       |4183614.5     |
+|Venlo      |64339.0       |230321.25     |
+|Apeldoorn  |141107.0      |1282945.5     |
+|Maastricht |120105.0      |131383.0      |
+|Roermond   |41225.0       |97623.0       |
+|Emmen      |56113.0       |1392288.75    |
++-----------+--------------+--------------+
+```
+
 > Present the output of your program. Explain what could be improved (if 
 > applicable).
 
