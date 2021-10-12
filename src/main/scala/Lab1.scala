@@ -64,7 +64,7 @@ object Lab1 {
         col("lat"),
         col("lon"),
         explode(col("tags"))
-      )
+      ).filter(col("type") === "node")
       .filter(
         col("key") === "name" || col("key") === "place" ||
           col("key") === "population" || col("key") === "harbour"
@@ -94,7 +94,6 @@ object Lab1 {
 
     // ********** remove the rows with imcomplete information *******
     val groupLessDF = groupdf
-      .filter(col("type") === "node")
       .filter(
         (col("place").isNotNull && col("population").isNotNull &&
           (col("place") === "city" || col("place") === "town" || col(
