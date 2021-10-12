@@ -61,24 +61,16 @@ In which the last argument ` height ` represents the height of sea level rise. T
 
 
 ## Functional overview
-~~The objects and functions we defined are: ~~
-~~```
-├── object Lab1 
-│   └── main
-|   └── readOpenStreetMap(df:DataFrame) : (DataFrame,DataFrame)
-|   └── readALOS(alosDF:DataFrame):DataFrame
-|   └── combineDF(df1:DataFrame,df2:DataFrame,riseMeter:Int):(DataFrame,DataFrame)
-|   └── findClosestDest(floodDF:DataFrame,safeDF:DataFrame,harbourDF:DataFrame)
-└── h3helper: contains processes related to h3
-    └── toH3func(lat:Double,lon:Double,res:Int):String
-    └── getH3Distance(origin:String,des:String):Int
-            
-```
-
-  
+ 
 > Introduce how you have approached the problem, and the global steps of your
 solution. 
-
+### Step 1: Collecting valid data 
+  * We read in data from OpenStreetMap and filter out invalid information based on their tag. 
+  * 
+### Step 2: Aggregating data
+  * 
+### Step 3: Matching the flooded region to the optimal shelter
+### Step 4: Calculating evacuation plan
 
   
   
