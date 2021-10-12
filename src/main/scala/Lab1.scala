@@ -40,12 +40,12 @@ object Lab1 {
     //  ); //Utrecht partial alos dataset
     // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
-    val (df1, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
+    val (placeDF, harbourDF) = readOpenStreetMap(spark.read.format("orc").load("netherlands-latest.osm.orc")); //complete osm dataset
     val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
 
     // ************** combine two datasets with H3 ************************
     val (floodDF, safeDF) = combineDF(
-      df1.select(col("name"), col("population"), col("H3"), col("place")),
+      placeDF,
       df2.select(col("H3"), col("elevation")),
       args(0).toInt
     )
@@ -137,13 +137,13 @@ object Lab1 {
     val harbourDF = h3mapdf
       .filter(col("harbour") === "yes")
       .select(col("H3").as("harbourH3"))
-      .cache()
+      
 
     val placeDF = h3mapdf
+      .select(col("name"), col("population"), col("H3"), col("place"))
       .filter(col("harbour").isNull)
-      .drop("harbour")
       .dropDuplicates("name") //name is unique
-      .cache()
+      
 
     println("******************************************************")
     println("* Finished building up DAG for reading OpenStreetMap *")
