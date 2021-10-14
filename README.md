@@ -42,7 +42,7 @@ sbt:Lab1 >compile
 
 
 Now we are set up to run our program! Consider an integer that represents the height of the rising sea level (unit: meter).<br/>
-Use ` run height `  command to start the process and you could get information like the image below. This way of running the spark application is mostly used for testing.  Next, we are going to introduce you another way of building and running this Spark application which enables the developer to inspect the event log on the spark history server.  
+Use ` run height `  command to start the process and you could get information like the image below. This way of running the spark application is mostly used for testing.  Next, we are going to introduce you to another way of building and running this Spark application, which enables the developers to inspect the event log on the spark history server.  
 ```
 sbt:Lab1 >run 5
 ```  
@@ -74,18 +74,18 @@ In which the last argument ` height ` represents the height of sea level rise. T
 ## Functional overview
 > Introduce how you have approached the problem, and the global steps of your solution. 
 ### Step 1: Collecting valid data 
-  * We first read in raw data from OpenStreetMap and group them by place. Then, invalid data are filtered out, the remainder are stored into dataframe [groupLessDF]. 
-  * After calculating corresponding H3 index values, we get all the information we need in dataframe [h3mapdf]. Since we are going to re-use [h3mapdf] for the next process, it is stored in memory in order to get better performance.
+  * We first read raw data from OpenStreetMap and group them by place. Then, invalid data are filtered out, the remainder is stored into data frame [groupLessDF]. 
+  * After calculating corresponding H3 index values, we get all the information we need in the data frame [h3mapdf]. Since we are going to re-use [h3mapdf] for the next process, it is stored in memory in order to get better performance.
   * The data set is divided into two dataframes : [harbourDF] for harbours, [placeDF] for other places.
 ### Step 2: Aggregating data
   * We defined function ` combineDF ` to combine data from OpenStreetMap and ALOS into [combinedDF]. 
-  * Acquired elevation data from ALOS, we can determine whether a place is flooded based on the input ` height ` . The results are seperated into [floodDF] and [safeDF].
-  * To make the application type-safe, we added ` Typecheck ` function to indicate correct input type and range for the users.
+  * Acquired elevation data from ALOS, we can determine whether a place is flooded based on the input ` height ` . The results are separated into [floodDF] and [safeDF].
+  * To make the application type-safe, we added ` Typecheck ` function to indicate the correct input type and range for the users.
 ### Step 3: Matching the flooded region to the optimal shelter
   * We defined function ` findClosestDest ` for the following operations. There are two ways of implementing it: 
      1. Match the flooded place with all the safe places and compare the distances
      2. Narrow the search attempts to places within the same large H3 tile
-  * [floodToSafe] dataframe stores information of each flooded city and its distances to the nearest safe city and harbour. 
+  * [floodToSafe] data frame stores information of each flooded city and its distances to the nearest safe city and harbour. 
 ### Step 4: Calculating evacuation plan
   * By comparing the distances to the city and the harbour, we divide the flooded places into two groups, namely:
      *  [near_city] places that are closer to a safe city 
