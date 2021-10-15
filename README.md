@@ -38,7 +38,7 @@ sbt:Lab1 >compile
 <img width="700" src="images/screenshot1.png" alt="Running sbt" title="Running sbt" >
 </p>
 
-<center> Running sbt </center>
+<h5 align="center"> Running sbt </h5>
 
 
 Now we are set up to run our program! Consider an integer that represents the height of the rising sea level (unit: meter).<br/>
@@ -51,7 +51,7 @@ sbt:Lab1 >run 5
 <img width="700" src="images/screenshot2.png"  alt="testing the application in sbt" title="testing the application in sbt" >
 </p>
 
-<h4 align="center"> testing the application in sbt</h4>
+<h5 align="center"> testing the application in sbt</h5>
 
 
 By using the ` spark-submit `  command, we set the application to run on a local Spark "cluster". Since we have already built the JAR, all you need to do is to run the code below:
@@ -64,7 +64,8 @@ In which the last argument ` height ` represents the height of sea level rise. T
 <p align="center">
 <img width="700" src="images/spark-submit.png" alt="running Spark application using spark-submit command" title="spark-submit command" >
 </p>
-<center> running Spark application using spark-submit command </center>
+
+<h5 align="center"> running Spark application using spark-submit command </h5>
 
 
 
@@ -88,12 +89,12 @@ In which the last argument ` height ` represents the height of sea level rise. T
 <p align="center">
 <img width="700" src="images/example.png" alt="Vrouwenakker" title="One of the smallest data point" >
 </p>
-<center> An example of one of the smallest data point </center>
+<h5 align="center"> An example of one of the smallest data point </h5>
 
 <p align="center">
 <img width="700" src="images/example_reso7.jpg" alt="Vrouwenakker" title="Visualize the H3 tiles" >
 </p>
-<center> Visualize the H3 tiles when resolution = 7</center>
+<h5 align="center"> Visualize the H3 tiles when resolution = 7</h5>
     
 
     
@@ -125,9 +126,14 @@ In which the last argument ` height ` represents the height of sea level rise. T
 ## Result
 
 When the application finished, information showing on the screen is like this:
+
 <p align = "center" >
 <img width="700" src="images/result10.png" alt="Result when height=10" title="Result when height=10"> 
 </p>
+<h5 align="center"> Result when height=10 </h5>
+
+
+
 Estimated total evacuees:
 ```
 +--------+------------+
@@ -186,7 +192,7 @@ There are totally 18 spark jobs, in which job 1 takes the longest time.
 <img width="700" src="images/spark_jobs.png" alt="Spark jobs" title="Spark jobs"> 
 </p>
 
-<center> Spark jobs</center>
+<h5 align="center"> Spark jobs</h5>
 
 In job 1, there are three stages that obviously take longer time than others, namely stage 1, 2 and 5. 
 
@@ -194,7 +200,7 @@ In job 1, there are three stages that obviously take longer time than others, na
 <img width="700" src="images/spark_stages.png" alt="Spark stages" title="Spark stages"> 
 </p>
 
-<center> Spark stages</center>
+<h5 align="center"> Spark stages</h5>
 
 In stage 1, the reason that it takes such a long time is :
 1. It reads in a lot of the data from ALOS data base
@@ -204,4 +210,4 @@ In stage 1, the reason that it takes such a long time is :
 <p align = "center" >
 <img width="700" src="images/spark_stage1DAG.png" alt="stage 1 DAG" title="stage 1 DAG"> 
 </p>
-<center> Stage 1 DAG </center>
+<h5 align="center"> Stage 1 DAG </h5>
