@@ -51,7 +51,7 @@ sbt:Lab1 >run 5
 <img width="700" src="images/screenshot2.png"  alt="testing the application in sbt" title="testing the application in sbt" >
 </p>
 
-<center> testing the application in sbt </center>
+<h4 align="center"> testing the application in sbt</h4>
 
 
 By using the ` spark-submit `  command, we set the application to run on a local Spark "cluster". Since we have already built the JAR, all you need to do is to run the code below:
@@ -185,6 +185,7 @@ There are totally 18 spark jobs, in which job 1 takes the longest time.
 <p align = "center" >
 <img width="700" src="images/spark_jobs.png" alt="Spark jobs" title="Spark jobs"> 
 </p>
+
 <center> Spark jobs</center>
 
 In job 1, there are three stages that obviously take longer time than others, namely stage 1, 2 and 5. 
@@ -192,6 +193,7 @@ In job 1, there are three stages that obviously take longer time than others, na
 <p align = "center" >
 <img width="700" src="images/spark_stages.png" alt="Spark stages" title="Spark stages"> 
 </p>
+
 <center> Spark stages</center>
 
 In stage 1, the reason that it takes such a long time is :
