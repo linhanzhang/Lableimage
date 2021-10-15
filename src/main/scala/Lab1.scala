@@ -103,6 +103,10 @@ object Lab1 {
     // ********** make the keys to be column names *************
     val groupdf = splitTagsDF
       .groupBy("id", "type", "lat", "lon")
+      // This step causes a shuffle
+      // groupBy tranformation is a wide transformation
+      // It requires data from other partitions to be read, combined and written to disk
+      // Each partition may contain data with the same "id", "type", "lat", "lon" value
       .pivot("key", Seq("name", "place", "population", "harbour"))
       .agg(first("value"))
     /*
@@ -189,9 +193,14 @@ object Lab1 {
   }
   def readALOS(alosDF: DataFrame): DataFrame = {
 
-    val h3df = alosDF
+    val h3df_raw = alosDF
       .withColumn("H3", geoUDF(col("lat"), col("lon"), lit(7)))
+    val h3df = h3df_raw
       .groupBy("H3") //H3 is now unique
+      // This step causes a shuffle
+      // groupBy tranformation is a wide transformation
+      // It requires data from other partitions to be read, combined and written to disk
+      // Each partition may contain data with the same H3 value
       .min("elevation")
       .withColumnRenamed("min(elevation)", "elevation")
     println("******************************************************")
@@ -215,6 +224,9 @@ object Lab1 {
 
     val combinedDF = df1
       .join(df2, Seq("H3"), "inner")
+      // This step causes a shuffle
+      // The join operation merges two data set over a same matching key
+      // It triggers a large amount of data movement across Spark executors
 
     /* val combinedDF=combinedDF_pre
     	.join(combineMinDF,Seq("name","elevation"))
@@ -272,11 +284,18 @@ object Lab1 {
   ) {
     val eva_cities = floodDF
       .crossJoin(safeDF) // find all the possible evacuation destinations
+         // This step causes a shuffle
+      // The join operation merges two data set over a same matching key
+      // It triggers a large amount of data movement across Spark executors
       .withColumn("city_distance", distanceUDF(col("floodH3"), col("safeH3")))
     // eva_cities.show(50,false)
 
     val min_city = eva_cities
       .groupBy("place")
+      // This step causes a shuffle
+      // groupBy tranformation is a wide transformation
+      // It requires data from other partitions to be read, combined and written to disk
+      // Each partition may contain data with the same place value
       .agg(
         min("city_distance").as("city_distance") // find the closest safe city
 
@@ -291,6 +310,9 @@ object Lab1 {
         eva_cities,
         Seq("place", "city_distance")
       ) // join the original dataframe
+         // This step causes a shuffle
+      // The join operation merges two data set over a same matching key
+      // It triggers a large amount of data movement across Spark executors
       .dropDuplicates(
         "place",
         "city_distance"
@@ -313,6 +335,10 @@ object Lab1 {
         distanceUDF(col("floodH3"), col("harbourH3"))
       )
       .groupBy("place")
+      // This step causes a shuffle
+      // groupBy tranformation is a wide transformation
+      // It requires data from other partitions to be read, combined and written to disk
+      // Each partition may contain data with the same place value
       .min("harbour_distance") // choose the cloestest one
       .withColumnRenamed("min(harbour_distance)", "harbour_distance")
     println("closest_harbour")
@@ -320,6 +346,9 @@ object Lab1 {
     // join closest_city with closest_harbour based on place name
     val floodToSafe = closest_city
       .join(closest_harbour, Seq("place"), "inner")
+         // This step causes a shuffle
+      // The join operation merges two data set over a same matching key
+      // It triggers a large amount of data movement across Spark executors
       .select(
         "place",
         "num_evacuees",
@@ -449,6 +478,10 @@ orld |0              |
     println("****** aggregate evacuees by their destination *******")
     val receive_popu = relocate_output
       .groupBy("destination")
+      // This step causes a shuffle
+      // groupBy tranformation is a wide transformation
+      // It requires data from other partitions to be read, combined and written to disk
+      // Each partition may contain data with the same destination value
       .agg(
         sum("num_evacuees").as("evacuees_received"),
         avg("safe_population").as("old_population")
@@ -469,6 +502,9 @@ orld |0              |
     println("********* calculate total number of evacuees *********")
     val sum_popu = receive_popu
       .groupBy()
+      // This step causes a shuffle
+      // data from different partitions are read 
+      // to calculate the total number of evacuees
       .sum("evacuees_received")
       .first
       .get(0)
