@@ -13,9 +13,12 @@ object Lab1 {
   val geoUDF = udf((lat: Double, lon: Double, res: Int) =>
     h3Helper.toH3func(lat, lon, res)
   )
+// h3Index : The reference point(minimal elevation) of each flooded place
+// resolution is high
 // return a list of String contains the coordination of the H3Rough tile and its neighbouring regions
-  val neighbourUDF = udf((lat: Double, lon: Double, res: Int) => 
-    h3Helper.findNeighbour(lat, lon, res)
+// resolution is low
+  val neighbourUDF = udf((h3Index : String) => 
+    h3Helper.findNeighbour(h3Index)
   )
 // calculates the distance between two places based on h3 toolbox
   val distanceUDF =
@@ -131,29 +134,30 @@ object Lab1 {
     //********** calculate the coarse/fine-grained H3 value ****************
     val h3mapdf = groupLessDF
       .withColumn("H3", geoUDF(col("lat"), col("lon"), lit(10)))
-      .withColumn("H3Rough", neighbourUDF(col("lat"), col("lon"), lit(5)))
       .cache() // this is for dividing the places into groups, and the calculation of distances will be done within each groups
-    h3mapdf.show(50,false)
+    //h3mapdf.show(50,false)
     /*
  +-------+----+------+-----+---------+-------+------+-------+---------------+--------------+
  |   					h3mapdf data 					      | +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
  |id     |type|lat   |lon  |name     |place |popu  |harbour |     H3        |H3Rough        |
  +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
- |4484399|node|52.010|5.433|Leersum  |village|7511  |null   |8a1969053247fff|85196907fffffff|
- |4471092|node|51.981|5.122|Hagestein|village|1455  |null   |8a196972e56ffff|85196973fffffff|
- |4556876|node|52.174|5.290|Soest    |town   |39395 |null   |8a19691890a7fff|8519691bfffffff|
- |9661556|node|52.116|4.835|Zegveld  |village|2310  |null   |8a196940980ffff|85196943fffffff|
+|4484399|node|52.010|5.433|Leersum  |village|7511  |null   |8a1969053247fff|[List of H3Rough]]|
+|4467567|node|51.972|5.584|Achterberg|village|3690 |null   |8a196904984ffff|[85196933fffffff, 85196907fffffff, 8519693bfffffff, 85196923fffffff, 85196937fffffff, 851969affffffff, 851969abfffffff]|
+|3660353|node|52.12|5.283|Soesterberg|village|6470 |null   |8a19690130affff|[85196903fffffff, 8519691bfffffff, 8519690bfffffff, 8519690ffffffff, 85196907fffffff, 85196917fffffff, 85196913fffffff]|
+
      */
 
     //***********separate the harbours and other places *******************
     val harbourDF = h3mapdf
       .filter(col("harbour") === "yes")
+      .withColumn("H3Rough", geoUDF(col("lat"), col("lon"), lit(5)))
       .select(col("H3").as("harbourH3"), col("H3Rough"))
       .cache()
 
     val placeDF = h3mapdf
       .filter(col("harbour").isNull)
       .drop("harbour")
+      .withColumn("H3Rough", geoUDF(col("lat"), col("lon"), lit(5)))
       .cache()
 
     println("******************************************************")
@@ -209,11 +213,14 @@ object Lab1 {
         "elevation",
         "place"
       ) //no need to know the type of flooded place any more
+      .withColumn("H3Rough", neighbourUDF(col("H3")))
       .withColumnRenamed("population", "num_evacuees")
       .withColumnRenamed("name", "place")
       .withColumnRenamed("H3", "floodH3")
       .withColumn("num_evacuees", col("num_evacuees").cast("int"))
       .cache()
+      floodDF.show(50,false)
+      
 
     /*
    root
@@ -506,10 +513,14 @@ object h3Helper {
     // Until a safe city is found
     // center is the H3Rough of a flooded place
     // k is initially set to 1, it should be able to increase
-  def findNeighbour(lat: Double, lon: Double, res: Int) : List[String] = {
-    val center = h3.geoToH3Address(lat, lon, res)
+  def findNeighbour(h3Index : String) : List[String] = {
+    val refPoint = h3.h3ToGeo(h3Index).toString()
+    var lat = refPoint(0)
+    var lon = refPoint(1)
     var k : Int = 1 
-    return h3.kRing(center,k).asScala.toList
+    var rough_res : Int = 5
+    val h3Rough = h3.geoToH3Address(lat, lon, rough_res)
+    return h3.kRing(h3Rough,k).asScala.toList
   }
   def getH3Distance(origin: String, des: String): Int = {
     if (
