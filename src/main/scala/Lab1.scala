@@ -4,6 +4,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.DataFrame
 import scala.sys.process._
+import collection.JavaConverters._
 import org.apache.log4j.{Level, Logger}
 
 
@@ -11,6 +12,10 @@ object Lab1 {
 // converts latitude and longitude data into H3 index
   val geoUDF = udf((lat: Double, lon: Double, res: Int) =>
     h3Helper.toH3func(lat, lon, res)
+  )
+// return a list of String contains the coordination of the H3Rough tile and its neighbouring regions
+  val neighbourUDF = udf((lat: Double, lon: Double, res: Int) => 
+    h3Helper.findNeighbour(lat, lon, res)
   )
 // calculates the distance between two places based on h3 toolbox
   val distanceUDF =
@@ -26,10 +31,12 @@ object Lab1 {
       .config("spark.master", "local")
       .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR") //stop DEBUG and INFO messages 
+       //  change the log levels 
+    Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
 
     // ************* process osm & alos dataset separately *******************
     val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("utrecht-latest.osm.orc"));// Utrecht dataset - corresponds to N052E005
-    val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
+    val df2=readALOS(spark.read.format("parquet").load("parquet/ALPSMLC30_N052E005_DSM.parquet")); //Utrecht partial alos dataset
 
     // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
     // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
@@ -52,8 +59,7 @@ object Lab1 {
     // *************** find the closest destination *************
 
     findClosestDest(floodDF, safeDF, harbourDF)
-    //  change the log levels 
-    Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
+ 
     // Stop the underlying SparkContext
     spark.stop
   }
@@ -68,7 +74,7 @@ object Lab1 {
         col("lat"),
         col("lon"),
         explode(col("tags"))
-      )
+      ).filter(col("type") === "node")
       .filter(
         col("key") === "name" || col("key") === "place" || 
         col("key") === "population" || col("key") === "harbour"
@@ -100,7 +106,6 @@ object Lab1 {
 
     // ********** remove the rows with imcomplete information *******
     val groupLessDF = groupdf
-      .filter(col("type") === "node")
       .filter(
         (col("place").isNotNull && col("population").isNotNull &&
           (col("place") === "city" || col("place") === "town" || col(
@@ -126,9 +131,9 @@ object Lab1 {
     //********** calculate the coarse/fine-grained H3 value ****************
     val h3mapdf = groupLessDF
       .withColumn("H3", geoUDF(col("lat"), col("lon"), lit(10)))
-      .withColumn("H3Rough", geoUDF(col("lat"), col("lon"), lit(5)))
+      .withColumn("H3Rough", neighbourUDF(col("lat"), col("lon"), lit(5)))
       .cache() // this is for dividing the places into groups, and the calculation of distances will be done within each groups
-
+    h3mapdf.show(50,false)
     /*
  +-------+----+------+-----+---------+-------+------+-------+---------------+--------------+
  |   					h3mapdf data 					      | +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
@@ -496,7 +501,16 @@ object h3Helper {
   val h3 = H3Core.newInstance()
   def toH3func(lat: Double, lon: Double, res: Int): String =
     h3.geoToH3Address(lat, lon, res)
-
+    // Find the cloest safe city within the same H3Rough index
+    // if not, search the outer circle
+    // Until a safe city is found
+    // center is the H3Rough of a flooded place
+    // k is initially set to 1, it should be able to increase
+  def findNeighbour(lat: Double, lon: Double, res: Int) : List[String] = {
+    val center = h3.geoToH3Address(lat, lon, res)
+    var k : Int = 1 
+    return h3.kRing(center,k).asScala.toList
+  }
   def getH3Distance(origin: String, des: String): Int = {
     if (
       des != null
