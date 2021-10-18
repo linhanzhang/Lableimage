@@ -14,15 +14,7 @@ object Lab1 {
   )
   val distanceUDF =
     udf((origin: String, des: String) => h3Helper.getH3Distance(origin, des))
-  // val destinationUDF = udf((origin:String,des:String) => h3Helper.getClosestCity(origin:String,des:String))
-  // val findClosestCity =
-  //   udf((origin: String, des: Array[(String, String, Int)]) =>
-  //     h3Helper.getClosestDest(origin, des)
-  //   )
-  //return "dd"
-  // val findClosestHarbour = udf((origin: String, des: Array[String]) =>
-  //   h3Helper.getClosestDest(origin, des)
-  // )
+
   def printConfigs(session: SparkSession) = {
     // get Conf
     val mconf = session.conf.getAll
@@ -38,7 +30,6 @@ object Lab1 {
       .appName("Lab 1")
       .config("spark.master", "local")
       .config("spark.executor.cores", 4)
-      //.config("spark.eventlog.logBlockUpdates.enable", true)
       .config("spark.shuffle.file.buffer", "1mb")
       .config("spark.executor.memory", "2g")
       .config("spark.shuffle.unsafe.file.output.buffer", "1mb")
@@ -47,16 +38,7 @@ object Lab1 {
     spark.sparkContext.setLogLevel("ERROR")
     spark.conf.set("spark.sql.shuffle.partitions", 8)
     printConfigs(spark)
-    // ************* process osm & alos dataset separately *******************
-    //  val (df1, harbourDF) = readOpenStreetMap(
-    //    spark.read.format("orc").load("utrecht-latest.osm.orc")
-    //  ); // Utrecht dataset - corresponds to N052E005
-    //  val df2 = readALOS(
-    //    spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")
-    //  ); //Utrecht partial alos dataset
-    // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
-    // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
-
+    // input check
     val height = typecheck.matchFunc(args(0))
     if (height == 0 || height == -1) {
       println("******************************************************")
@@ -65,18 +47,18 @@ object Lab1 {
     } else {
       println("******************************************************")
       println("        The sea level rised " + height + " m          ")
+      // ************* process osm & alos dataset separately *******************
       val (placeDF, harbourDF) = readOpenStreetMap(
         spark.read.format("orc").load("netherlands-latest.osm.orc")
       ); //complete osm dataset
-      val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
+      val elevationDF = readALOS(spark.read.format("parquet").load("parquet/*")); //complete alos dataset
 
       // ************** combine two datasets with H3 ************************
       val (floodDF, safeDF) = combineDF(
         placeDF,
-        df2.select(col("H3"), col("elevation")),
-        args(0).toInt
+        elevationDF,
+        height
       )
-
       // *************** find the closest destination *************
       findClosestDest(floodDF, safeDF, harbourDF)
       // Stop the underlying SparkContext0
@@ -109,23 +91,6 @@ object Lab1 {
       // Each partition may contain data with the same "id", "type", "lat", "lon" value
       .pivot("key", Seq("name", "place", "population", "harbour"))
       .agg(first("value"))
-    /*
-	  root
-	  |-- id: long (nullable = true)
-	  |-- type: string (nullable = true)
-	  |-- lat: decimal(9,7) (nullable = true)
-	  |-- lon: decimal(10,7) (nullable = true)
-	  |-- name: string (nullable = true)
-	  |-- place: string (nullable = true)
-	  |-- population: string (nullable = true)
-	  |-- harbour: string (nullable = true)
-+-------+--------+----+----+--------------+-----+----------+-------+
-|id     |type    |lat |lon |name          |place|population|harbour|
-+-------+--------+----+----+--------------+-----+----------+-------+
-|144640 |relation|null|null|Hooglanderveen|null |null      |null   |
-|333291 |relation|null|null|Bus 73: Maarss|null |null      |null   |
-|358048 |relation|null|null|Bus 102: Utrec|null |null      |null   |
-     */
 
     // ********** remove the rows with imcomplete information *******
     val groupLessDF = groupdf
@@ -138,35 +103,11 @@ object Lab1 {
         ) === "yes"
       )
 
-    /*
-   +----------+----+----------+---------+-----------+-------+----------+-------+
-|			      groupLessDF data 	   			       |
-+----------+----+----------+---------+-----------+-------+----------+-------+
-|id        |type|lat       |lon      |name       |place  |population|harbour|
-+----------+----+----------+---------+-----------+-------+----------+-------+
-|44843991  |node|52.0102642|5.4332757|Leersum    |village|7511      |null   |
-|44710922  |node|51.9810496|5.1220284|Hagestein  |village|1455      |null   |
-|994008023 |node|52.0367152|5.0836117|Nieuwegein |town   |61869     |null   |
-|44701792  |node|51.9791304|4.8574054|Polsbroek  |village|1199      |null   |
-|5435880522|node|52.2452013|5.3731599|Bunschoten |town   |21866     |null   |
-|947021601 |node|52.2177783|4.9372124|Zeilschool |null   |null      |yes    | */
-
     //********** calculate the coarse/fine-grained H3 value ****************
     val h3mapdf = groupLessDF
       .withColumn("H3", geoUDF(col("lat"), col("lon"), lit(7)))
       //.withColumn("H3Rough",geoUDF(col("lat"),col("lon"),lit(5)))
       .cache() // this is for dividing the places into groups, and the calculation of distances will be done within each groups
-
-    /*
- +-------+----+------+-----+---------+-------+------+-------+---------------+--------------+
- |   					h3mapdf data 					      | +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
- |id     |type|lat   |lon  |name     |place |popu  |harbour |     H3        |H3Rough x       |
- +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
- |4484399|node|52.010|5.433|Leersum  |village|7511  |null   |8a1969053247fff|85196907fffffff|
- |4471092|node|51.981|5.122|Hagestein|village|1455  |null   |8a196972e56ffff|85196973fffffff|
- |4556876|node|52.174|5.290|Soest    |town   |39395 |null   |8a19691890a7fff|8519691bfffffff|
- |9661556|node|52.116|4.835|Zegveld  |village|2310  |null   |8a196940980ffff|85196943fffffff|
-     */
 
     //***********separate the harbours and other places *******************
     val harbourDF = h3mapdf
@@ -182,14 +123,7 @@ object Lab1 {
     println("* Finished building up DAG for reading OpenStreetMap *")
 
     return (placeDF, harbourDF)
-    /*
-+----------+----+----------+---------+--------+-------+-----+---------------+---------------+
-|id        |type|lat       |lon      |name    |place  |popu |H3             |H3Rough        |
-+----------+----+----------+---------+--------+-------+-----+---------------+---------------+
-|44843991  |node|52.0102642|5.4332757|Leersum |village|7511 |8a1969053247fff|85196907fffffff|
-|44710922  |node|51.9810496|5.1220284|Hageste |village|1455 |8a196972e56ffff|85196973fffffff|
-|45568761  |node|52.1746100|5.2909500|Soest   |town   |39395|8a19691890a7fff|8519691bfffffff|
-     */
+
   }
   def readALOS(alosDF: DataFrame): DataFrame = {
 
@@ -203,8 +137,10 @@ object Lab1 {
       // Each partition may contain data with the same H3 value
       .min("elevation")
       .withColumnRenamed("min(elevation)", "elevation")
+      .select(col("H3"), col("elevation"))
     println("******************************************************")
     println("**** Finished building up DAG for reading ALOSMap ****")
+    
     return h3df
   }
   /*combineDF: combine openstreetmap & alos,
@@ -224,20 +160,11 @@ object Lab1 {
 
     val combinedDF = df1
       .join(df2, Seq("H3"), "inner")
-      // This step causes a shuffle
-      // The join operation merges two data set over a same matching key
-      // It triggers a large amount of data movement across Spark executors
+    // This step causes a shuffle
+    // The join operation merges two data set over a same matching key
+    // It triggers a large amount of data movement across Spark executors
 
-    /* val combinedDF=combinedDF_pre
-    	.join(combineMinDF,Seq("name","elevation"))
-    	.dropDuplicates("name") */
-
-    // combinedDF.filter(col("name")==="Den Haag").show(10)
-
-    //  sys.exit(0)
-    /** ********split into flood and safe df **********
-      */
-
+    /** ********split into flood and safe DF **********      */
     //floodDF: place,population, num_evacuees, floodH3
     val floodDF = combinedDF
       .filter(col("elevation") <= riseMeter)
@@ -284,7 +211,7 @@ object Lab1 {
   ) {
     val eva_cities = floodDF
       .crossJoin(safeDF) // find all the possible evacuation destinations
-         // This step causes a shuffle
+      // This step causes a shuffle
       // The join operation merges two data set over a same matching key
       // It triggers a large amount of data movement across Spark executors
       .withColumn("city_distance", distanceUDF(col("floodH3"), col("safeH3")))
@@ -298,10 +225,6 @@ object Lab1 {
       // Each partition may contain data with the same place value
       .agg(
         min("city_distance").as("city_distance") // find the closest safe city
-
-        // first("num_evacuees").as("num_evacuees"),
-        // first("destination").as("destination"),
-        // first("safe_population").as("safe_population")
       )
     // min_city.show(50,false)
 
@@ -310,24 +233,16 @@ object Lab1 {
         eva_cities,
         Seq("place", "city_distance")
       ) // join the original dataframe
-         // This step causes a shuffle
+      // This step causes a shuffle
       // The join operation merges two data set over a same matching key
       // It triggers a large amount of data movement across Spark executors
       .dropDuplicates(
         "place",
         "city_distance"
       ) // avoid duplicate due to the same city_distance
-    println("closest_city")
+    //println("closest_city")
     // closest_city.show(50,false)
 
-// +-------------------+-------------+-----------+---------------+
-// |place              |city_distance|destination|safe_population|
-// +-------------------+-------------+-----------+---------------+
-// |Eemdijk            |7            |Amersfoort |139259         |
-// |Loenen aan de Vecht|7            |Amersfoort |139259         |
-// |Vreeland           |8            |Amersfoort |139259         |
-// |Hoogland           |2            |Amersfoort |139259         |
-// +-------------------+-------------+-----------+---------------+
     val closest_harbour = floodDF
       .crossJoin(harbourDF) // find distance to each harbour
       .withColumn(
@@ -341,12 +256,12 @@ object Lab1 {
       // Each partition may contain data with the same place value
       .min("harbour_distance") // choose the cloestest one
       .withColumnRenamed("min(harbour_distance)", "harbour_distance")
-    println("closest_harbour")
+    //println("closest_harbour")
     // closest_harbour.show(50,false)
     // join closest_city with closest_harbour based on place name
     val floodToSafe = closest_city
       .join(closest_harbour, Seq("place"), "inner")
-         // This step causes a shuffle
+      // This step causes a shuffle
       // The join operation merges two data set over a same matching key
       // It triggers a large amount of data movement across Spark executors
       .select(
@@ -357,7 +272,7 @@ object Lab1 {
         "city_distance",
         "safe_population"
       )
-    println("floodToSafe")
+    //println("floodToSafe")
     //floodToSafe.show(50,false)
     /*
       seperate into two dataframes
@@ -372,15 +287,6 @@ object Lab1 {
     println("******************************************************")
     println("************ places closer to a harbour **************")
     // near_harbour.show(50,false)
-    /*
-     	+-----+------------+-----------+---------------+
-	|place|num_evacuees|destination|safe_population|
-	+-----+------------+-----------+---------------+
-	|B    |100         |C137       |1000           |
-	|C    |100         |C137       |1000           |
-	+-----+------------+-----------+---------------+
-
-     */
 
     val near_city = floodToSafe
       .filter(col("harbour_distance") > col("city_distance"))
@@ -388,17 +294,6 @@ object Lab1 {
     println("******************************************************")
     println("************ places closer to a city  ****************")
     // near_city.show(50,false)
-
-    /*
-     	+-----+------------+-----------+---------------+
-	|place|num_evacuees|destination|safe_population|
-	+-----+------------+-----------+---------------+
-	|A    |100         |C137       |1000           |
-	|D    |100         |C137       |1000           |
-	|E    |100         |C137       |1000           |
-	+-----+------------+-----------+---------------+
-
-     */
 
     // ********* operation on <near_harbour> DF **********
     val change_dest =
@@ -422,16 +317,6 @@ object Lab1 {
     println("******************************************************")
     println("************ evacuees to harbour and city ************")
     // near_harbour_new.show(50,false) // evacuees to harbour and city
-    /*
-     	+-----+------------+-----------+---------------+
-	|place|num_evacuees|destination|safe_population|
-	+-----+------------+-----------+---------------+
-	|B    |75.0        |C137       |1000           |
-	|B    |25.0        |Waterworld |0              |
-	|C    |75.0        |C137       |1000           |
-	|C    |25.0        |Waterworld |0              |
-	+-----+------------+-----------+---------------+
-     */
 
     val relocate_output =
       near_harbour_new
@@ -440,21 +325,7 @@ object Lab1 {
 
     println("******************************************************")
     println("************* output => evacuees by place ************")
-
     //relocate_output.show(100,false)
-    /*
-     	+-----+------------+-----------+---------------+
-	|place|num_evacuees|destin    // relocate_output.show(100,false)
-orld |0              |
-	|B    |75.0        |C137       |1000           |
-	|C    |75.0        |C137       |1000           |
-	|C    |25.0        |Waterworld |0              |
-	|D    |100.0       |C137       |1000           |
-	|E    |100.0       |C137       |1000           |
-	+-----+------------+-----------+---------------+
-
-     */
-
     println("******************************************************")
     println("******************* Saving data **********************")
     //val currTime = new SimpleDateFormat("yyyy-MM-dd-HH:mm").format(new Date)
@@ -465,10 +336,6 @@ orld |0              |
       .orc("output/data/relocate.orc") // output as .orc file
     //.orc("output/data/relocate" + currTime + ".orc") // output as .orc file
     println("******************* Finished save*********************")
-
-    //  val output_12 = spark.createDataFrame(spark.sparkContent.parallelize(relocate_output),schema) //re-create data with the required schema
-    //  output_12.write.orc("relocate_output_12.orc")
-
     //val testread1 = spark.read.format("orc").load("output_12.orc")
     //val testread2 = spark.read.format("orc").load("output/data/relocate.orc")
     //val testread3 = spark.read.format("orc").load("output/data/receive_output.orc")
@@ -486,24 +353,13 @@ orld |0              |
         sum("num_evacuees").as("evacuees_received"),
         avg("safe_population").as("old_population")
       );
-    /*
-     	+-----------+-----------------+--------------+
-	|destination|evacuees_received|old_population|
-	+-----------+-----------------+--------------+
-	|Waterworld |50.0             |0.0           |
-	|C137       |450.0            |1000.0        |
-	+-----------+-----------------+--------------+
-     */
-
-    /** ******calculate the sum of evacuees*******
-      */
-
+    /** ******calculate the sum of evacuees*******      */
     println("******************************************************")
     println("********* calculate total number of evacuees *********")
     val sum_popu = receive_popu
       .groupBy()
       // This step causes a shuffle
-      // data from different partitions are read 
+      // data from different partitions are read
       // to calculate the total number of evacuees
       .sum("evacuees_received")
       .first
@@ -524,17 +380,8 @@ orld |0              |
     println("******************************************************")
     println("*** output => population change of the destination ***")
 
-    // receive_output.show(100,false)
-    /*
-	+-----------+--------------+--------------+
-	|destination|old_population|new_population|
-	+-----------+--------------+--------------+
-	|Waterworld |0.0           |50.0          |
-	|C137       |1000.0        |1450.0        |
-	+-----------+--------------+--------------+
-
-     */
-
+    // receive_output.show(10,false)
+ 
     println("******************************************************")
     println("******************* Saving data **********************")
     receive_output.write
