@@ -37,7 +37,7 @@ object Lab1 {
       .builder()
       .appName("Lab 1")
       .config("spark.master", "local")
-      .config("spark.executor.cores", 4)
+      //.config("spark.executor.cores", 4)
       //.config("spark.eventlog.logBlockUpdates.enable", true)
       .config("spark.shuffle.file.buffer", "1mb")
       .config("spark.executor.memory", "2g")
@@ -45,7 +45,7 @@ object Lab1 {
       .config("spark.io.compression.lz4.blockSize", "512kb")
       .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-    spark.conf.set("spark.sql.shuffle.partitions", 8)
+    spark.conf.set("spark.sql.shuffle.partitions", 5)
     printConfigs(spark)
     // ************* process osm & alos dataset separately *******************
     //  val (df1, harbourDF) = readOpenStreetMap(
