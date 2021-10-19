@@ -297,19 +297,23 @@ object Lab1 {
         floodTocity,
         Seq("place", "city_distance")
       ) // join the original dataframe
+      .drop(    "floodH3", 
+        "floodH3Rough")
       .dropDuplicates(
         "place",
         "city_distance"
       ) // avoid duplicate due to the same city_distance
 
-    // println("closestCity")
-    // closestCity.show(50, false)
+    //  println("closestCity")
+    //  closestCity.printSchema()
+//    root
+//  |-- place: string (nullable = true)
+//  |-- city_distance: integer (nullable = true)
+//  |-- num_evacuees: integer (nullable = true)
+//  |-- destination: string (nullable = true)
+//  |-- safe_population: string (nullable = true)
 
-// +-------------+---------------+----------+------------+---------------+-----------+---------------+---------------+---------------+----------------+
-// |city_distance|H3Rough        |place     |num_evacuees|floodH3        |destination|safe_population|harbourH3      |H3Rough        |harbour_distance|
-// +-------------+---------------+----------+------------+---------------+-----------+---------------+---------------+---------------+----------------+
-// |101          |83196bfffffffff|Bleiswijk |11919       |8a196bb2e347fff|Delft      |101386         |8a1fa4926007fff|83196bfffffffff|358             |
-// |28           |83196bfffffffff|Oegstgeest|23608       |8a19694b2417fff|Leiden     |123753         |8a1fa4926007fff|83196bfffffffff|539
+    // closestCity.show(50, false)
 
     /** ***** find the closest harbour ******
       */
@@ -358,10 +362,12 @@ object Lab1 {
       )
     // println("closestHarbour")
     // closestHarbour.show(50, false)
+    //closestHarbour.printSchema()
 
     val floodToCH = closestCity
       .join(closestHarbour, Seq("place"), "inner")
       .cache()
+     // floodToCH.printSchema()
     //  .withColumnRenamed("place", "destination")
     // .select(
     //   "num_evacuees",
@@ -392,6 +398,7 @@ object Lab1 {
     val near_city = floodToCH
       .filter(col("harbour_distance") > col("city_distance"))
       .drop("harbour_distance", "city_distance")
+    //  near_city.printSchema()
     // ********* operation on <near_harbour> DF **********
     val change_dest =
       near_harbour.withColumn(
@@ -411,6 +418,7 @@ object Lab1 {
     ) // evacuees to the nearest city
     val near_harbour_new =
       rest_popu.union(change_popu)
+     // near_harbour_new.printSchema()
       //.sort("place") // Combined DF
     println("******************************************************")
     println("************ evacuees to harbour and city ************")
@@ -419,6 +427,8 @@ object Lab1 {
       near_harbour_new
         .union(near_city)
         .sort("place") // Combine <near_harbour_new> and <near_city>
+
+  //  relocate_output.printSchema()
 
     println("******************************************************")
     println("************* output => evacuees by place ************")
