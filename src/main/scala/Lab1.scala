@@ -30,8 +30,14 @@ object Lab1 {
       .appName("Lab 1")
       .config("spark.master", "local")
       .config("spark.sql.broadcastTimeout", "3600") // avoid time-out error
+      .config("spark.io.compression.lz4.blockSize", "512kb")
+      .config("spark.shuffle.unsafe.file.output.buffer", "1mb")
+      .config("spark.shuffle.file.buffer", "1mb")
+      .config("spark.executor.memory", "2g")
       .getOrCreate()
+      
     spark.sparkContext.setLogLevel("ERROR") //stop DEBUG and INFO messages
+    spark.conf.set("spark.sql.shuffle.partitions", 5)
     //  change the log levels
     Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
 
@@ -129,7 +135,7 @@ object Lab1 {
       .filter(col("harbour") === "yes")
       .withColumn("H3RoughArray", neighbourUDF(col("lat"),col("lon"), lit(0)))
       .select(col("H3").as("harbourH3"), col("H3RoughArray"))
-      .cache()
+      //.cache()
 
     //  println("harbourDF")
     //  harbourDF.show(50, false)
@@ -147,7 +153,7 @@ object Lab1 {
         col("lon")
         //  col("H3Rough")
       )
-      .cache()
+      //.cache()
     //   println("placeDF")
     //  placeDF.show(50,false)
     println("******************************************************")
@@ -198,6 +204,7 @@ object Lab1 {
     val combinedDF = combinedDF_pre // each place with its single elevation reference
       .join(combineMinDF, Seq("name", "elevation"))
       .dropDuplicates("name") 
+      .cache()
     // println("combinedDF")
     // combinedDF.show(50,false)
 
@@ -217,7 +224,7 @@ object Lab1 {
       .withColumnRenamed("name", "place")
       .withColumnRenamed("H3", "floodH3")
       .withColumn("num_evacuees", col("num_evacuees").cast("int"))
-      .cache()
+      //.cache()
     //  println("floodDF")
     //  floodDF.show(50, false)
 
@@ -233,7 +240,7 @@ object Lab1 {
       .withColumnRenamed("name", "destination")
       .withColumnRenamed("H3", "safeH3")
       //.select(col("destination"),col("safeH3"),col("safe_population"),col("H3Rough"),split(col("H3Rough"), " ").as("H3RoughArray"))
-      .cache()
+      //.cache()
     // println("safeDF")
     // safeDF.show(50, false)
 
@@ -320,6 +327,7 @@ object Lab1 {
         )
         //.drop("H3RoughArray", "floodH3", "harbourH3", "floodH3Rough")
         .drop("harbourH3", "floodH3", "floodH3Rough")
+        .cache()
 
     val closestHarbour_group = closestHarbour_pre
       .groupBy("place")
@@ -328,7 +336,7 @@ object Lab1 {
         "min(harbour_distance)",
         "harbour_distance"
       ) //place is distinct
-      .cache()
+     // .cache()
 
     println("******************************************************")
     println("****** find the distance to the nearest harbour ******")
@@ -340,7 +348,9 @@ object Lab1 {
       )
       .drop(
         "num_evacuees",
-        "H3RoughArray"
+        "H3RoughArray",
+        "floodH3",
+        "floodH3Rough"
       ) //for each flooded place, find the distance to the nearest harbour
       .dropDuplicates(
         "place",
@@ -351,6 +361,7 @@ object Lab1 {
 
     val floodToCH = closestCity
       .join(closestHarbour, Seq("place"), "inner")
+      .cache()
     //  .withColumnRenamed("place", "destination")
     // .select(
     //   "num_evacuees",
@@ -374,6 +385,7 @@ object Lab1 {
     val near_harbour = floodToCH
       .filter(col("harbour_distance") <= col("city_distance"))
       .drop("city_distance", "harbour_distance")
+      .cache()
 
     println("******************************************************")
     println("******* filter out the places closer to a city *******")
@@ -416,7 +428,7 @@ object Lab1 {
 
     println("******************************************************")
     println("******************* Saving data **********************")
-    //relocate_output.drop("safe_population").write.mode("overwrite").orc("output/data/relocate.orc") // output as .orc file
+    relocate_output.drop("safe_population").write.mode("overwrite").orc("output/data/relocate.orc") // output as .orc file
     println("****************** Finished save *********************")
 
     /*
@@ -466,7 +478,7 @@ object Lab1 {
 
     println("******************************************************")
     println("******************* Saving data **********************")
-    receive_output.write.mode("overwrite").orc("/output/data/receive_output_13.orc")
+    receive_output.write.mode("overwrite").orc("output/data/receive_output.orc")
     println("****************** Finished save *********************")
 
   }
@@ -490,7 +502,7 @@ object h3Helper {
   //   return h3.kRing(h3Rough, k).asScala.toList
   // }
   def findNeighbour(lat: Double, lon: Double, k: Int): List[String] = {
-    var rough_res: Int = 4
+    var rough_res: Int = 2
     val h3Rough = h3.geoToH3Address(lat, lon, rough_res)
     return h3.kRing(h3Rough, k).asScala.toList
   }
