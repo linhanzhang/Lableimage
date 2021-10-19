@@ -17,7 +17,7 @@ object Lab1 {
 // return a list of String contains the coordination of the H3Rough tile and its neighbouring regions
 // resolution is low
   val neighbourUDF =
-    udf((h3Index: String, k: Int) => h3Helper.findNeighbour(h3Index, k))
+    udf((lat: Double, lon: Double, k: Int) => h3Helper.findNeighbour(lat, lon, k))
 // calculates the distance between two places based on h3 toolbox
   val distanceUDF =
     udf((origin: String, des: String) => h3Helper.getH3Distance(origin, des))
@@ -118,47 +118,23 @@ object Lab1 {
       )
     //groupLessDF.show(50,false)
 
-    /*
-   +----------+----+----------+---------+-----------+-------+----------+-------+
-|			      groupLessDF data 	   			       |
-+----------+----+----------+---------+-----------+-------+----------+-------+
-|id        |type|lat       |lon      |name       |place  |population|harbour|
-+----------+----+----------+---------+-----------+-------+----------+-------+
-|44843991  |node|52.0102642|5.4332757|Leersum    |village|7511      |null   |
-|44710922  |node|51.9810496|5.1220284|Hagestein  |village|1455      |null   |
-|994008023 |node|52.0367152|5.0836117|Nieuwegein |town   |61869     |null   |
-|44701792  |node|51.9791304|4.8574054|Polsbroek  |village|1199      |null   |
-|5435880522|node|52.2452013|5.3731599|Bunschoten |town   |21866     |null   |
-|947021601 |node|52.2177783|4.9372124|Zeilschool |null   |null      |yes    | */
-
     //********** calculate the coarse/fine-grained H3 value ****************
     val h3mapdf = groupLessDF
       .withColumn("H3", geoUDF(col("lat"), col("lon"), lit(7)))
       .cache() // this is for dividing the places into groups, and the calculation of distances will be done within each groups
     //h3mapdf.show(50,false)
-    /*
- +-------+----+------+-----+---------+-------+------+-------+---------------+--------------+
- |   					h3mapdf data 					      | +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
- |id     |type|lat   |lon  |name     |place |popu  |harbour |     H3        |H3Rough        |
- +-------+----+------+-----+---------+-------+------+-------+---------------+---------------+
-|4484399|node|52.010|5.433|Leersum  |village|7511  |null   |8a1969053247fff|[List of H3Rough]]|
-|4467567|node|51.972|5.584|Achterberg|village|3690 |null   |8a196904984ffff|[85196933fffffff, 85196907fffffff, 8519693bfffffff, 85196923fffffff, 85196937fffffff, 851969affffffff, 851969abfffffff]|
-|3660353|node|52.12|5.283|Soesterberg|village|6470 |null   |8a19690130affff|[85196903fffffff, 8519691bfffffff, 8519690bfffffff, 8519690ffffffff, 85196907fffffff, 85196917fffffff, 85196913fffffff]|
-
-     */
 
     //***********separate the harbours and other places *******************
-    val rough_res: Int = 3
     val harbourDF = h3mapdf
       .filter(col("harbour") === "yes")
-      .withColumn("H3RoughArray", neighbourUDF(col("H3"), lit(0)))
+      .withColumn("H3RoughArray", neighbourUDF(col("lat"),col("lon"), lit(0)))
       .select(col("H3").as("harbourH3"), col("H3RoughArray"))
       .cache()
 
-    // println("harbourDF")
-    // harbourDF.show(50, false)
+    //  println("harbourDF")
+    //  harbourDF.show(50, false)
 
-    val placeDF = h3mapdf
+    val placeDF = h3mapdf // harbour is filtered out
       .filter(col("harbour").isNull)
       .drop("harbour")
       //.withColumn("H3Rough", geoUDF(col("lat"), col("lon"), lit(5)))
@@ -212,15 +188,16 @@ object Lab1 {
     //combinedDF - name,place,population,H3,H3Rough,min(elevation)
     val combinedDF_pre = placeDF
       .join(elevationDF, Seq("H3"), "inner")
+      .cache()// cached for the self-join operation
 
     val combineMinDF = combinedDF_pre
       .groupBy("name")
       .min("elevation")
       .withColumnRenamed("min(elevation)", "elevation")
 
-    val combinedDF = combinedDF_pre
+    val combinedDF = combinedDF_pre // each place with its single elevation reference
       .join(combineMinDF, Seq("name", "elevation"))
-      .dropDuplicates("name")
+      .dropDuplicates("name") 
     // println("combinedDF")
     // combinedDF.show(50,false)
 
@@ -233,29 +210,16 @@ object Lab1 {
       .drop(
         "elevation",
         "place",
-        "lat",
-        "lon"
       ) //no need to know the type of flooded place any more
-      .withColumn("floodH3Rough", neighbourUDF(col("H3"), lit(1)))
+      .withColumn("floodH3Rough", neighbourUDF(col("lat"),col("lon"), lit(1)))
+      .drop("lat", "lon")
       .withColumnRenamed("population", "num_evacuees")
       .withColumnRenamed("name", "place")
       .withColumnRenamed("H3", "floodH3")
       .withColumn("num_evacuees", col("num_evacuees").cast("int"))
       .cache()
-    // println("floodDF")
-    // floodDF.show(50, false)
-
-    /*
-   root
-  |-- place: string (nullable = true)
-  |-- floodH3: string (nullable = true)
-  |-- num_evacuees: integer (nullable = true)
-  |-- H3Rough: string (nullable = true)
-     */
-    //safeDF - safe_name,safe_place,safe_population,H3, H3Rough
-    // row satisfied:
-    // - safe_place == city | harbour
-    val rough_res: Int = 3
+    //  println("floodDF")
+    //  floodDF.show(50, false)
 
     val safeDF = combinedDF
       .filter(col("elevation") > riseMeter)
@@ -263,15 +227,15 @@ object Lab1 {
       .filter(col("place") === "city") //the destination must be a city
       .drop("place")
       // .withColumn("H3Rough", geoUDF(col("lat"), col("lon"), lit(rough_res)))
-      .withColumn("H3RoughArray", neighbourUDF(col("H3"), lit(0)))
+      .withColumn("H3RoughArray", neighbourUDF(col("lat"),col("lon"),lit(0)))
       .drop("lat", "lon")
       .withColumnRenamed("population", "safe_population")
       .withColumnRenamed("name", "destination")
       .withColumnRenamed("H3", "safeH3")
       //.select(col("destination"),col("safeH3"),col("safe_population"),col("H3Rough"),split(col("H3Rough"), " ").as("H3RoughArray"))
       .cache()
-    println("safeDF")
-    safeDF.show(50, false)
+    // println("safeDF")
+    // safeDF.show(50, false)
 
     return (floodDF, safeDF)
 
@@ -298,16 +262,15 @@ object Lab1 {
         .join(
           safeDF,
           arrays_overlap(col("floodH3Rough"), col("H3RoughArray")),
-          "inner"
+          "leftouter"
         )
         // .join(safeDF,Seq("H3"))
         .withColumn("city_distance", distanceUDF(col("floodH3"), col("safeH3")))
-        .drop("safeH3")
-        .drop("H3RoughArray")
+        .drop("safeH3","H3RoughArray")
         .cache()
-        .sort("place")// test result
-    println("floodTocity")
-    floodTocity.show(500, false)
+       // .sort("place")// test result
+    // println("floodTocity")
+    // floodTocity.show(100, false)
 
 // +-------------+---------------+----------+------------+---------------+-----------+---------------+
 // |city_distance|H3Rough        |place     |num_evacuees|floodH3        |destination|safe_population|
@@ -396,8 +359,8 @@ object Lab1 {
     //   "city_distance",
     //   "safe_population"
     // )
-    println("floodToCH")
-    floodToCH.show(50, false)
+    // println("floodToCH")
+    // floodToCH.show(50, false)
 
     /*
       seperate into two dataframes
@@ -435,7 +398,8 @@ object Lab1 {
       col("num_evacuees") * 0.75
     ) // evacuees to the nearest city
     val near_harbour_new =
-      rest_popu.union(change_popu).sort("place") // Combined DF
+      rest_popu.union(change_popu)
+      //.sort("place") // Combined DF
     println("******************************************************")
     println("************ evacuees to harbour and city ************")
 
@@ -447,21 +411,8 @@ object Lab1 {
     println("******************************************************")
     println("************* output => evacuees by place ************")
 
-    relocate_output.show(50,false)
-    /*
-     	+-----+------------+-----------+---------------+
-	|place|num_evacuees|destination|safe_population|
-	+-----+------------+-----------+---------------+
-	|A    |100.0       |C137       |1000           |
-	|B    |25.0        |Waterworld |0              |
-	|B    |75.0        |C137       |1000           |
-	|C    |75.0        |C137       |1000           |
-	|C    |25.0        |Waterworld |0              |
-	|D    |100.0       |C137       |1000           |
-	|E    |100.0       |C137       |1000           |
-	+-----+------------+-----------+---------------+
-
-     */
+     //relocate_output.show(50,false)
+ 
 
     println("******************************************************")
     println("******************* Saving data **********************")
@@ -476,45 +427,37 @@ object Lab1 {
      */
 
     // ********* calculate the total number of evacuees to each destination ********
-    // println("******************************************************")
-    // println("****** aggregate evacuees by their destination *******")
-    // val receive_popu = relocate_output
-    //   .groupBy("destination")
-    //   .agg(
-    //     sum("num_evacuees").as("evacuees_received"),
-    //     avg("safe_population").as("old_population")
-    //   );
-    /*
-     	+-----------+-----------------+--------------+
-	|destination|evacuees_received|old_population|
-	+-----------+-----------------+--------------+
-	|Waterworld |50.0             |0.0           |
-	|C137       |450.0            |1000.0        |
-	+-----------+-----------------+--------------+
-     */
-
+    println("******************************************************")
+    println("****** aggregate evacuees by their destination *******")
+    val receive_popu = relocate_output
+      .groupBy("destination")
+      .agg(
+        sum("num_evacuees").as("evacuees_received"),
+        avg("safe_population").as("old_population")
+      );
+  
     /** ******calculate the sum of evacuees*******
       */
 
     println("******************************************************")
     println("********* calculate total number of evacuees *********")
-    // val sum_popu = receive_popu
-    //   .groupBy()
-    //   .agg(sum("evacuees_received"))
-    //   .first
-    //   .get(0)
+    val sum_popu = receive_popu
+      .groupBy()
+      .agg(sum("evacuees_received"))
+      .first
+      .get(0)
 
-    // println("******************************************************")
-    // println("|        total number of evacuees is " + sum_popu + "      |")
-    // println("******************************************************")
+    println("******************************************************")
+    println("|        total number of evacuees is " + sum_popu + "      |")
+    println("******************************************************")
 
     // ******* transform the output data into the required format **********
-    // val receive_output = receive_popu
-    //   .withColumn(
-    //     "new_population",
-    //     col("old_population") + col("evacuees_received")
-    //   )
-    //   .drop("evacuees_received")
+    val receive_output = receive_popu
+      .withColumn(
+        "new_population",
+        col("old_population") + col("evacuees_received")
+      )
+      .drop("evacuees_received")
 
     println("******************************************************")
     println("*** output => population change of the destination ***")
@@ -523,7 +466,7 @@ object Lab1 {
 
     println("******************************************************")
     println("******************* Saving data **********************")
-    //receive_output.write.mode("overwrite").orc("/output/data/receive_output_13.orc")
+    receive_output.write.mode("overwrite").orc("/output/data/receive_output_13.orc")
     println("****************** Finished save *********************")
 
   }
@@ -547,10 +490,7 @@ object h3Helper {
   //   return h3.kRing(h3Rough, k).asScala.toList
   // }
   def findNeighbour(lat: Double, lon: Double, k: Int): List[String] = {
-    val refPoint = h3.h3ToGeo(h3Index).toString()
-    var lat = refPoint(0)
-    var lon = refPoint(1)
-    var rough_res: Int = 6
+    var rough_res: Int = 4
     val h3Rough = h3.geoToH3Address(lat, lon, rough_res)
     return h3.kRing(h3Rough, k).asScala.toList
   }
