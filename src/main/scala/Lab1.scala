@@ -48,14 +48,14 @@ object Lab1 {
     spark.conf.set("spark.sql.shuffle.partitions", 5)
     printConfigs(spark)
     // ************* process osm & alos dataset separately *******************
-    //  val (df1, harbourDF) = readOpenStreetMap(
+    //  val (placeDF, harbourDF) = readOpenStreetMap(
     //    spark.read.format("orc").load("utrecht-latest.osm.orc")
     //  ); // Utrecht dataset - corresponds to N052E005
-    //  val df2 = readALOS(
+    //  val elevationDF = readALOS(
     //    spark.read.load("parquet/ALPSMLC30_N052E005_DSM.parquet")
     //  ); //Utrecht partial alos dataset
-    // val (df1,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
-    // val df2=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
+    // val (placeDF,harbourDF)=readOpenStreetMap(spark.read.format("orc").load("zuid-holland-latest.osm.orc")); //zuid-holland dataset - corresponds to N052E004
+    // val elevationDF=readALOS(spark.read.load("parquet/ALPSMLC30_N052E004_DSM.parquet")); //partial alos dataset
 
     val height = typecheck.matchFunc(args(0))
     if (height == 0 || height == -1) {
@@ -68,13 +68,13 @@ object Lab1 {
       val (placeDF, harbourDF) = readOpenStreetMap(
         spark.read.format("orc").load("netherlands-latest.osm.orc")
       ); //complete osm dataset
-      val df2 = readALOS(spark.read.load("parquet/*")); //complete alos dataset
+      val elevationDF = readALOS(spark.read.load("parquet/*")); //complete alos dataset
 
       // ************** combine two datasets with H3 ************************
       val (floodDF, safeDF) = combineDF(
         placeDF,
-        df2.select(col("H3"), col("elevation")),
-        args(0).toInt
+        elevationDF.select(col("H3"), col("elevation")),
+        height
       )
 
       // *************** find the closest destination *************
@@ -88,21 +88,20 @@ object Lab1 {
   def readOpenStreetMap(df: DataFrame): (DataFrame, DataFrame) = {
     // ********* explode and filter the useful tags ************
     val splitTagsDF = df
+      .filter(col("type") === "node")
       .select(
         col("id"),
-        col("type"),
         col("lat"),
         col("lon"),
         explode(col("tags"))
       )
-      .filter(col("type") === "node")
       .filter(
         col("key") === "name" || col("key") === "place" ||
           col("key") === "population" || col("key") === "harbour"
       )
     // ********** make the keys to be column names *************
     val groupdf = splitTagsDF
-      .groupBy("id", "type", "lat", "lon")
+      .groupBy("id", "lat", "lon")
       // This step causes a shuffle
       // groupBy tranformation is a wide transformation
       // It requires data from other partitions to be read, combined and written to disk
@@ -213,8 +212,8 @@ object Lab1 {
            get the output orc name | evacuees & sum
    */
   def combineDF(
-      df1: DataFrame,
-      df2: DataFrame,
+      placeDF: DataFrame,
+      elevationDF: DataFrame,
       riseMeter: Int
   ): (DataFrame, DataFrame) = {
 
@@ -222,8 +221,8 @@ object Lab1 {
       */
     //combinedDF - name,place,population,H3,min(elevation)
 
-    val combinedDF = df1
-      .join(df2, Seq("H3"), "inner")
+    val combinedDF = placeDF
+      .join(elevationDF, Seq("H3"), "inner")
       // This step causes a shuffle
       // The join operation merges two data set over a same matching key
       // It triggers a large amount of data movement across Spark executors
